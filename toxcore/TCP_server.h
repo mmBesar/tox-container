@@ -34,21 +34,21 @@ typedef enum TCP_Status {
 
 typedef struct TCP_Server TCP_Server;
 
-const uint8_t *tcp_server_public_key(non_null() const TCP_Server *tcp_server);
-size_t tcp_server_listen_count(non_null() const TCP_Server *tcp_server);
+const uint8_t *_Nonnull tcp_server_public_key(const TCP_Server *_Nonnull tcp_server);
+size_t tcp_server_listen_count(const TCP_Server *_Nonnull tcp_server);
 
 /** Create new TCP server instance. */
-TCP_Server *new_tcp_server(non_null() const Logger *logger, non_null() const Memory *mem, non_null() const Random *rng, non_null() const Network *ns,
-                           bool ipv6_enabled, uint16_t num_sockets, non_null() const uint16_t *ports,
-                           non_null() const uint8_t *secret_key, nullable() Onion *onion, nullable() Forwarding *forwarding);
+TCP_Server *_Nullable new_tcp_server(const Logger *_Nonnull logger, const Memory *_Nonnull mem, const Random *_Nonnull rng, const Network *_Nonnull ns,
+                                     bool ipv6_enabled, uint16_t num_sockets, const uint16_t *_Nonnull ports,
+                                     const uint8_t *_Nonnull secret_key, Onion *_Nullable onion, Forwarding *_Nullable forwarding);
 /** Run the TCP_server */
-void do_tcp_server(non_null() TCP_Server *tcp_server, non_null() const Mono_Time *mono_time);
+void do_tcp_server(TCP_Server *_Nonnull tcp_server, const Mono_Time *_Nonnull mono_time);
 
 /** Kill the TCP server */
-void kill_tcp_server(nullable() TCP_Server *tcp_server);
+void kill_tcp_server(TCP_Server *_Nullable tcp_server);
 /** @brief Returns a pointer to the net profile associated with `tcp_server`.
  *
  * Returns null if `tcp_server` is null.
  */
-const Net_Profile *tcp_server_get_net_profile(nullable() const TCP_Server *tcp_server);
+const Net_Profile *_Nullable tcp_server_get_net_profile(const TCP_Server *_Nullable tcp_server);
 #endif /* C_TOXCORE_TOXCORE_TCP_SERVER_H */

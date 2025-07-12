@@ -33,14 +33,14 @@
 #define GCC_UDP_DIRECT_RETRY 1
 
 /** Returns true if array entry does not contain an active packet. */
-static bool array_entry_is_empty(non_null() const GC_Message_Array_Entry *array_entry)
+static bool array_entry_is_empty(const GC_Message_Array_Entry *_Nonnull array_entry)
 {
     assert(array_entry != nullptr);
     return array_entry->time_added == 0;
 }
 
 /** @brief Clears an array entry. */
-static void clear_array_entry(non_null() const Memory *mem, non_null() GC_Message_Array_Entry *const array_entry)
+static void clear_array_entry(const Memory *_Nonnull mem, GC_Message_Array_Entry *_Nonnull const array_entry)
 {
     mem_delete(mem, array_entry->data);
 
@@ -54,7 +54,7 @@ static void clear_array_entry(non_null() const Memory *mem, non_null() GC_Messag
  * `start_id` and ending at `end_id`, and sets the send_message_id for `gconn`
  * to `start_id`.
  */
-static void clear_send_queue_id_range(non_null() const Memory *mem, non_null() GC_Connection *gconn, uint64_t start_id, uint64_t end_id)
+static void clear_send_queue_id_range(const Memory *_Nonnull mem, GC_Connection *_Nonnull gconn, uint64_t start_id, uint64_t end_id)
 {
     const uint16_t start_idx = gcc_get_array_index(start_id);
     const uint16_t end_idx = gcc_get_array_index(end_id);
@@ -90,8 +90,8 @@ void gcc_set_recv_message_id(GC_Connection *gconn, uint64_t id)
  *
  * Return true on success.
  */
-static bool create_array_entry(non_null() const Logger *log, non_null() const Memory *mem, non_null() const Mono_Time *mono_time, non_null() GC_Message_Array_Entry *array_entry,
-                               nullable() const uint8_t *data, uint16_t length, uint8_t packet_type, uint64_t message_id)
+static bool create_array_entry(const Logger *_Nonnull log, const Memory *_Nonnull mem, const Mono_Time *_Nonnull mono_time, GC_Message_Array_Entry *_Nonnull array_entry,
+                               const uint8_t *_Nullable data, uint16_t length, uint8_t packet_type, uint64_t message_id)
 {
     if (!array_entry_is_empty(array_entry)) {
         LOGGER_WARNING(log, "Failed to create array entry; entry is not empty.");
@@ -133,8 +133,8 @@ static bool create_array_entry(non_null() const Logger *log, non_null() const Me
  *
  * Returns true and increments gconn's send_message_id on success.
  */
-static bool add_to_send_array(non_null() const Logger *log, non_null() const Memory *mem, non_null() const Mono_Time *mono_time, non_null() GC_Connection *gconn,
-                              nullable() const uint8_t *data, uint16_t length, uint8_t packet_type)
+static bool add_to_send_array(const Logger *_Nonnull log, const Memory *_Nonnull mem, const Mono_Time *_Nonnull mono_time, GC_Connection *_Nonnull gconn,
+                              const uint8_t *_Nullable data, uint16_t length, uint8_t packet_type)
 {
     /* check if send_array is full */
     if ((gconn->send_message_id % GCC_BUFFER_SIZE) == (uint16_t)(gconn->send_array_start - 1)) {
@@ -334,8 +334,8 @@ int gcc_save_tcp_relay(const Random *rng, GC_Connection *gconn, const Node_forma
  *
  * Return true on success.
  */
-static bool store_in_recv_array(non_null() const Logger *log, non_null() const Memory *mem, non_null() const Mono_Time *mono_time,
-                                non_null() GC_Connection *gconn, nullable() const uint8_t *data,
+static bool store_in_recv_array(const Logger *_Nonnull log, const Memory *_Nonnull mem, const Mono_Time *_Nonnull mono_time,
+                                GC_Connection *_Nonnull gconn, const uint8_t *_Nullable data,
                                 uint16_t length, uint8_t packet_type, uint64_t message_id)
 {
     const uint16_t idx = gcc_get_array_index(message_id);
@@ -355,7 +355,7 @@ static bool store_in_recv_array(non_null() const Logger *log, non_null() const M
  * Return the length of the fully reassembled packet on success.
  * Return 0 on failure.
  */
-static uint16_t reassemble_packet(non_null() const Logger *log, non_null() const Memory *mem, nullable() GC_Connection *gconn, non_null() uint8_t **payload, uint64_t message_id)
+static uint16_t reassemble_packet(const Logger *_Nonnull log, const Memory *_Nonnull mem, GC_Connection *_Nullable gconn, uint8_t *_Nonnull *payload, uint64_t message_id)
 {
     uint16_t end_idx = gcc_get_array_index(message_id - 1);
     uint16_t start_idx = end_idx;
@@ -504,8 +504,8 @@ int gcc_handle_received_message(const Logger *log, const Memory *mem, const Mono
  *
  * Return true on success.
  */
-static bool process_recv_array_entry(non_null() const GC_Session *c, non_null() GC_Chat *chat, non_null() GC_Connection *gconn, uint32_t peer_number,
-                                     non_null() GC_Message_Array_Entry *const array_entry, nullable() void *userdata)
+static bool process_recv_array_entry(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn, uint32_t peer_number,
+                                     GC_Message_Array_Entry *_Nonnull const array_entry, void *_Nullable userdata)
 {
     uint8_t sender_pk[ENC_PUBLIC_KEY_SIZE];
     memcpy(sender_pk, get_enc_key(&gconn->addr.public_key), ENC_PUBLIC_KEY_SIZE);

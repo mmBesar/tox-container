@@ -14,16 +14,16 @@
 typedef struct ToxAVCall ToxAVCall;
 #endif /* TOXAV_CALL_DEFINED */
 
-ToxAVCall *call_get(non_null() ToxAV *av, uint32_t friend_number);
+ToxAVCall *_Nullable call_get(ToxAV *_Nonnull av, uint32_t friend_number);
 
-RTPSession *rtp_session_get(non_null() ToxAVCall *call, int payload_type);
+RTPSession *_Nullable rtp_session_get(ToxAVCall *_Nonnull call, int payload_type);
 
-MSISession *tox_av_msi_get(non_null() const ToxAV *av);
+MSISession *_Nullable tox_av_msi_get(const ToxAV *_Nonnull av);
 
-BWController *bwc_controller_get(non_null() const ToxAVCall *call);
+BWController *_Nullable bwc_controller_get(const ToxAVCall *_Nonnull call);
 
-Mono_Time *toxav_get_av_mono_time(non_null() const ToxAV *av);
+Mono_Time *_Nullable toxav_get_av_mono_time(const ToxAV *_Nonnull av);
 
-const Logger *toxav_get_logger(non_null() const ToxAV *av);
+const Logger *_Nonnull toxav_get_logger(const ToxAV *_Nonnull av);
 
 #endif /* C_TOXCORE_TOXAV_HACKS_H */

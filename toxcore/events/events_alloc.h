@@ -16,17 +16,17 @@ extern "C" {
 #endif
 
 struct Tox_Events {
-    Tox_Event *events;
+    Tox_Event *_Nonnull events;
     uint32_t events_size;
     uint32_t events_capacity;
 
-    const Memory *mem;
+    const Memory *_Nonnull mem;
 };
 
 typedef struct Tox_Events_State {
     Tox_Err_Events_Iterate error;
-    const Memory *mem;
-    Tox_Events *events;
+    const Memory *_Nonnull mem;
+    Tox_Events *_Nonnull events;
 } Tox_Events_State;
 
 tox_conference_connected_cb tox_events_handle_conference_connected;
@@ -70,9 +70,9 @@ tox_group_self_join_cb tox_events_handle_group_self_join;
 tox_group_join_fail_cb tox_events_handle_group_join_fail;
 tox_group_moderation_cb tox_events_handle_group_moderation;
 
-Tox_Events_State *tox_events_alloc(non_null() void *user_data);
+Tox_Events_State *_Nonnull tox_events_alloc(void *_Nonnull user_data);
 
-bool tox_events_add(non_null() Tox_Events *events, non_null() const Tox_Event *event);
+bool tox_events_add(Tox_Events *_Nonnull events, const Tox_Event *_Nonnull event);
 
 #ifdef __cplusplus
 } /* extern "C" */

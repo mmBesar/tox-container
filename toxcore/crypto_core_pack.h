@@ -19,10 +19,10 @@
 extern "C" {
 #endif
 
-bool pack_extended_public_key(non_null() const Extended_Public_Key *key, non_null() Bin_Pack *bp);
-bool pack_extended_secret_key(non_null() const Extended_Secret_Key *key, non_null() Bin_Pack *bp);
-bool unpack_extended_public_key(non_null() Extended_Public_Key *key, non_null() Bin_Unpack *bu);
-bool unpack_extended_secret_key(non_null() Extended_Secret_Key *key, non_null() Bin_Unpack *bu);
+bool pack_extended_public_key(const Extended_Public_Key *_Nonnull key, Bin_Pack *_Nonnull bp);
+bool pack_extended_secret_key(const Extended_Secret_Key *_Nonnull key, Bin_Pack *_Nonnull bp);
+bool unpack_extended_public_key(Extended_Public_Key *_Nonnull key, Bin_Unpack *_Nonnull bu);
+bool unpack_extended_secret_key(Extended_Secret_Key *_Nonnull key, Bin_Unpack *_Nonnull bu);
 
 #ifdef __cplusplus
 } /* extern "C" */

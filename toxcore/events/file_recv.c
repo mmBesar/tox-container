@@ -32,7 +32,7 @@ struct Tox_Event_File_Recv {
     uint32_t filename_length;
 };
 
-static void tox_event_file_recv_set_friend_number(non_null() Tox_Event_File_Recv *file_recv, uint32_t friend_number)
+static void tox_event_file_recv_set_friend_number(Tox_Event_File_Recv *_Nonnull file_recv, uint32_t friend_number)
 {
     assert(file_recv != nullptr);
     file_recv->friend_number = friend_number;
@@ -43,7 +43,7 @@ uint32_t tox_event_file_recv_get_friend_number(const Tox_Event_File_Recv *file_r
     return file_recv->friend_number;
 }
 
-static void tox_event_file_recv_set_file_number(non_null() Tox_Event_File_Recv *file_recv, uint32_t file_number)
+static void tox_event_file_recv_set_file_number(Tox_Event_File_Recv *_Nonnull file_recv, uint32_t file_number)
 {
     assert(file_recv != nullptr);
     file_recv->file_number = file_number;
@@ -54,7 +54,7 @@ uint32_t tox_event_file_recv_get_file_number(const Tox_Event_File_Recv *file_rec
     return file_recv->file_number;
 }
 
-static void tox_event_file_recv_set_kind(non_null() Tox_Event_File_Recv *file_recv, uint32_t kind)
+static void tox_event_file_recv_set_kind(Tox_Event_File_Recv *_Nonnull file_recv, uint32_t kind)
 {
     assert(file_recv != nullptr);
     file_recv->kind = kind;
@@ -65,7 +65,7 @@ uint32_t tox_event_file_recv_get_kind(const Tox_Event_File_Recv *file_recv)
     return file_recv->kind;
 }
 
-static void tox_event_file_recv_set_file_size(non_null() Tox_Event_File_Recv *file_recv, uint64_t file_size)
+static void tox_event_file_recv_set_file_size(Tox_Event_File_Recv *_Nonnull file_recv, uint64_t file_size)
 {
     assert(file_recv != nullptr);
     file_recv->file_size = file_size;
@@ -76,8 +76,8 @@ uint64_t tox_event_file_recv_get_file_size(const Tox_Event_File_Recv *file_recv)
     return file_recv->file_size;
 }
 
-static bool tox_event_file_recv_set_filename(non_null() Tox_Event_File_Recv *file_recv,
-        nullable() const uint8_t *filename, uint32_t filename_length)
+static bool tox_event_file_recv_set_filename(Tox_Event_File_Recv *_Nonnull file_recv,
+        const uint8_t *_Nullable filename, uint32_t filename_length)
 {
     assert(file_recv != nullptr);
     if (file_recv->filename != nullptr) {
@@ -113,13 +113,13 @@ const uint8_t *tox_event_file_recv_get_filename(const Tox_Event_File_Recv *file_
     return file_recv->filename;
 }
 
-static void tox_event_file_recv_construct(non_null() Tox_Event_File_Recv *file_recv)
+static void tox_event_file_recv_construct(Tox_Event_File_Recv *_Nonnull file_recv)
 {
     *file_recv = (Tox_Event_File_Recv) {
         0
     };
 }
-static void tox_event_file_recv_destruct(non_null() Tox_Event_File_Recv *file_recv, non_null() const Memory *mem)
+static void tox_event_file_recv_destruct(Tox_Event_File_Recv *_Nonnull file_recv, const Memory *_Nonnull mem)
 {
     free(file_recv->filename);
 }
@@ -135,7 +135,7 @@ bool tox_event_file_recv_pack(
            && bin_pack_bin(bp, event->filename, event->filename_length);
 }
 
-static bool tox_event_file_recv_unpack_into(non_null() Tox_Event_File_Recv *event, non_null() Bin_Unpack *bu)
+static bool tox_event_file_recv_unpack_into(Tox_Event_File_Recv *_Nonnull event, Bin_Unpack *_Nonnull bu)
 {
     assert(event != nullptr);
     if (!bin_unpack_array_fixed(bu, 5, nullptr)) {
@@ -181,7 +181,7 @@ void tox_event_file_recv_free(Tox_Event_File_Recv *file_recv, const Memory *mem)
     mem_delete(mem, file_recv);
 }
 
-static Tox_Event_File_Recv *tox_events_add_file_recv(non_null() Tox_Events *events, non_null() const Memory *mem)
+static Tox_Event_File_Recv *tox_events_add_file_recv(Tox_Events *_Nonnull events, const Memory *_Nonnull mem)
 {
     Tox_Event_File_Recv *const file_recv = tox_event_file_recv_new(mem);
 
@@ -214,7 +214,7 @@ bool tox_event_file_recv_unpack(
     return tox_event_file_recv_unpack_into(*event, bu);
 }
 
-static Tox_Event_File_Recv *tox_event_file_recv_alloc(non_null() void *user_data)
+static Tox_Event_File_Recv *tox_event_file_recv_alloc(void *_Nonnull user_data)
 {
     Tox_Events_State *state = tox_events_alloc(user_data);
     assert(state != nullptr);

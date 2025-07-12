@@ -28,7 +28,7 @@ struct Tox_Event_Friend_Connection_Status {
     Tox_Connection connection_status;
 };
 
-static void tox_event_friend_connection_status_set_friend_number(non_null() Tox_Event_Friend_Connection_Status *friend_connection_status, uint32_t friend_number)
+static void tox_event_friend_connection_status_set_friend_number(Tox_Event_Friend_Connection_Status *_Nonnull friend_connection_status, uint32_t friend_number)
 {
     assert(friend_connection_status != nullptr);
     friend_connection_status->friend_number = friend_number;
@@ -39,7 +39,7 @@ uint32_t tox_event_friend_connection_status_get_friend_number(const Tox_Event_Fr
     return friend_connection_status->friend_number;
 }
 
-static void tox_event_friend_connection_status_set_connection_status(non_null() Tox_Event_Friend_Connection_Status *friend_connection_status, Tox_Connection connection_status)
+static void tox_event_friend_connection_status_set_connection_status(Tox_Event_Friend_Connection_Status *_Nonnull friend_connection_status, Tox_Connection connection_status)
 {
     assert(friend_connection_status != nullptr);
     friend_connection_status->connection_status = connection_status;
@@ -50,13 +50,13 @@ Tox_Connection tox_event_friend_connection_status_get_connection_status(const To
     return friend_connection_status->connection_status;
 }
 
-static void tox_event_friend_connection_status_construct(non_null() Tox_Event_Friend_Connection_Status *friend_connection_status)
+static void tox_event_friend_connection_status_construct(Tox_Event_Friend_Connection_Status *_Nonnull friend_connection_status)
 {
     *friend_connection_status = (Tox_Event_Friend_Connection_Status) {
         0
     };
 }
-static void tox_event_friend_connection_status_destruct(non_null() Tox_Event_Friend_Connection_Status *friend_connection_status, non_null() const Memory *mem)
+static void tox_event_friend_connection_status_destruct(Tox_Event_Friend_Connection_Status *_Nonnull friend_connection_status, const Memory *_Nonnull mem)
 {
     return;
 }
@@ -69,7 +69,7 @@ bool tox_event_friend_connection_status_pack(
            && tox_connection_pack(event->connection_status, bp);
 }
 
-static bool tox_event_friend_connection_status_unpack_into(non_null() Tox_Event_Friend_Connection_Status *event, non_null() Bin_Unpack *bu)
+static bool tox_event_friend_connection_status_unpack_into(Tox_Event_Friend_Connection_Status *_Nonnull event, Bin_Unpack *_Nonnull bu)
 {
     assert(event != nullptr);
     if (!bin_unpack_array_fixed(bu, 2, nullptr)) {
@@ -112,7 +112,7 @@ void tox_event_friend_connection_status_free(Tox_Event_Friend_Connection_Status 
     mem_delete(mem, friend_connection_status);
 }
 
-static Tox_Event_Friend_Connection_Status *tox_events_add_friend_connection_status(non_null() Tox_Events *events, non_null() const Memory *mem)
+static Tox_Event_Friend_Connection_Status *tox_events_add_friend_connection_status(Tox_Events *_Nonnull events, const Memory *_Nonnull mem)
 {
     Tox_Event_Friend_Connection_Status *const friend_connection_status = tox_event_friend_connection_status_new(mem);
 
@@ -145,7 +145,7 @@ bool tox_event_friend_connection_status_unpack(
     return tox_event_friend_connection_status_unpack_into(*event, bu);
 }
 
-static Tox_Event_Friend_Connection_Status *tox_event_friend_connection_status_alloc(non_null() void *user_data)
+static Tox_Event_Friend_Connection_Status *tox_event_friend_connection_status_alloc(void *_Nonnull user_data)
 {
     Tox_Events_State *state = tox_events_alloc(user_data);
     assert(state != nullptr);

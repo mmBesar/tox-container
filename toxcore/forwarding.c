@@ -93,10 +93,10 @@ static uint16_t forwarding_packet_length(uint16_t sendback_data_len, uint16_t da
     return 1 + 1 + sendback_len + data_length;
 }
 
-static bool create_forwarding_packet(non_null() const Forwarding *forwarding,
-                                     nullable() const uint8_t *sendback_data, uint16_t sendback_data_len,
-                                     non_null() const uint8_t *data, uint16_t length,
-                                     non_null() uint8_t *packet)
+static bool create_forwarding_packet(const Forwarding *_Nonnull forwarding,
+                                     const uint8_t *_Nullable sendback_data, uint16_t sendback_data_len,
+                                     const uint8_t *_Nonnull data, uint16_t length,
+                                     uint8_t *_Nonnull packet)
 {
     packet[0] = NET_PACKET_FORWARDING;
     if (sendback_data_len == 0) {
@@ -140,9 +140,9 @@ bool send_forwarding(const Forwarding *forwarding, const IP_Port *dest,
 
 #define FORWARD_REQUEST_MIN_PACKET_SIZE (1 + CRYPTO_PUBLIC_KEY_SIZE)
 
-static bool handle_forward_request_dht(non_null() const Forwarding *forwarding,
-                                       nullable() const uint8_t *sendback_data, uint16_t sendback_data_len,
-                                       nullable() const uint8_t *packet, uint16_t length)
+static bool handle_forward_request_dht(const Forwarding *_Nonnull forwarding,
+                                       const uint8_t *_Nullable sendback_data, uint16_t sendback_data_len,
+                                       const uint8_t *_Nullable packet, uint16_t length)
 {
     if (length < FORWARD_REQUEST_MIN_PACKET_SIZE) {
         return false;
@@ -166,8 +166,8 @@ static bool handle_forward_request_dht(non_null() const Forwarding *forwarding,
     return route_packet(forwarding->dht, public_key, forwarding_packet, len) == len;
 }
 
-static int handle_forward_request(non_null() void *object, non_null() const IP_Port *source, nullable() const uint8_t *packet, uint16_t length,
-                                  nullable() void *userdata)
+static int handle_forward_request(void *_Nonnull object, const IP_Port *_Nonnull source, const uint8_t *_Nullable packet, uint16_t length,
+                                  void *_Nullable userdata)
 {
     const Forwarding *forwarding = (const Forwarding *)object;
     uint8_t sendback_data[1 + MAX_PACKED_IPPORT_SIZE];
@@ -185,8 +185,8 @@ static int handle_forward_request(non_null() void *object, non_null() const IP_P
 #define MIN_NONEMPTY_SENDBACK_SIZE TIMED_AUTH_SIZE
 #define FORWARD_REPLY_MIN_PACKET_SIZE (1 + 1 + MIN_NONEMPTY_SENDBACK_SIZE)
 
-static int handle_forward_reply(non_null() void *object, non_null() const IP_Port *source, nullable() const uint8_t *packet, uint16_t length,
-                                nullable() void *userdata)
+static int handle_forward_reply(void *_Nonnull object, const IP_Port *_Nonnull source, const uint8_t *_Nullable packet, uint16_t length,
+                                void *_Nullable userdata)
 {
     const Forwarding *forwarding = (const Forwarding *)object;
     if (length < FORWARD_REPLY_MIN_PACKET_SIZE) {
@@ -257,8 +257,8 @@ static int handle_forward_reply(non_null() void *object, non_null() const IP_Por
 
 #define FORWARDING_MIN_PACKET_SIZE (1 + 1)
 
-static int handle_forwarding(non_null() void *object, non_null() const IP_Port *source, nullable() const uint8_t *packet, uint16_t length,
-                             nullable() void *userdata)
+static int handle_forwarding(void *_Nonnull object, const IP_Port *_Nonnull source, const uint8_t *_Nullable packet, uint16_t length,
+                             void *_Nullable userdata)
 {
     const Forwarding *forwarding = (const Forwarding *)object;
     if (length < FORWARDING_MIN_PACKET_SIZE) {
@@ -348,7 +348,7 @@ void set_callback_forward_reply(Forwarding *forwarding, forward_reply_cb *functi
     forwarding->forward_reply_callback_object = object;
 }
 
-Forwarding *new_forwarding(const Logger *log, const Memory *mem, const Random *rng, const Mono_Time *mono_time, DHT *dht)
+Forwarding *_Nullable new_forwarding(const Logger *log, const Memory *mem, const Random *rng, const Mono_Time *mono_time, DHT *dht)
 {
     if (log == nullptr || mono_time == nullptr || dht == nullptr) {
         return nullptr;

@@ -19,19 +19,19 @@ struct Bin_Pack {
     cmp_ctx_t ctx;
 };
 
-static bool null_reader(non_null() cmp_ctx_t *ctx, non_null() void *data, size_t limit)
+static bool null_reader(cmp_ctx_t *_Nonnull ctx, void *_Nonnull data, size_t limit)
 {
     assert(limit == 0);
     return false;
 }
 
-static bool null_skipper(non_null() cmp_ctx_t *ctx, size_t count)
+static bool null_skipper(cmp_ctx_t *_Nonnull ctx, size_t count)
 {
     assert(count == 0);
     return false;
 }
 
-static size_t buf_writer(non_null() cmp_ctx_t *ctx, non_null() const void *data, size_t count)
+static size_t buf_writer(cmp_ctx_t *_Nonnull ctx, const void *_Nonnull data, size_t count)
 {
     const uint8_t *bytes = (const uint8_t *)data;
     Bin_Pack *bp = (Bin_Pack *)ctx->buf;
@@ -52,7 +52,7 @@ static size_t buf_writer(non_null() cmp_ctx_t *ctx, non_null() const void *data,
     return count;
 }
 
-static void bin_pack_init(non_null() Bin_Pack *bp, nullable() uint8_t *buf, uint32_t buf_size)
+static void bin_pack_init(Bin_Pack *_Nonnull bp, uint8_t *_Nullable buf, uint32_t buf_size)
 {
     bp->bytes = buf;
     bp->bytes_size = buf_size;

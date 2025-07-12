@@ -33,7 +33,7 @@ struct Tox_Event_Conference_Message {
     uint32_t message_length;
 };
 
-static void tox_event_conference_message_set_conference_number(non_null() Tox_Event_Conference_Message *conference_message, uint32_t conference_number)
+static void tox_event_conference_message_set_conference_number(Tox_Event_Conference_Message *_Nonnull conference_message, uint32_t conference_number)
 {
     assert(conference_message != nullptr);
     conference_message->conference_number = conference_number;
@@ -44,7 +44,7 @@ uint32_t tox_event_conference_message_get_conference_number(const Tox_Event_Conf
     return conference_message->conference_number;
 }
 
-static void tox_event_conference_message_set_peer_number(non_null() Tox_Event_Conference_Message *conference_message, uint32_t peer_number)
+static void tox_event_conference_message_set_peer_number(Tox_Event_Conference_Message *_Nonnull conference_message, uint32_t peer_number)
 {
     assert(conference_message != nullptr);
     conference_message->peer_number = peer_number;
@@ -55,7 +55,7 @@ uint32_t tox_event_conference_message_get_peer_number(const Tox_Event_Conference
     return conference_message->peer_number;
 }
 
-static void tox_event_conference_message_set_type(non_null() Tox_Event_Conference_Message *conference_message, Tox_Message_Type type)
+static void tox_event_conference_message_set_type(Tox_Event_Conference_Message *_Nonnull conference_message, Tox_Message_Type type)
 {
     assert(conference_message != nullptr);
     conference_message->type = type;
@@ -66,8 +66,8 @@ Tox_Message_Type tox_event_conference_message_get_type(const Tox_Event_Conferenc
     return conference_message->type;
 }
 
-static bool tox_event_conference_message_set_message(non_null() Tox_Event_Conference_Message *conference_message,
-        nullable() const uint8_t *message, uint32_t message_length)
+static bool tox_event_conference_message_set_message(Tox_Event_Conference_Message *_Nonnull conference_message,
+        const uint8_t *_Nullable message, uint32_t message_length)
 {
     assert(conference_message != nullptr);
     if (conference_message->message != nullptr) {
@@ -103,13 +103,13 @@ const uint8_t *tox_event_conference_message_get_message(const Tox_Event_Conferen
     return conference_message->message;
 }
 
-static void tox_event_conference_message_construct(non_null() Tox_Event_Conference_Message *conference_message)
+static void tox_event_conference_message_construct(Tox_Event_Conference_Message *_Nonnull conference_message)
 {
     *conference_message = (Tox_Event_Conference_Message) {
         0
     };
 }
-static void tox_event_conference_message_destruct(non_null() Tox_Event_Conference_Message *conference_message, non_null() const Memory *mem)
+static void tox_event_conference_message_destruct(Tox_Event_Conference_Message *_Nonnull conference_message, const Memory *_Nonnull mem)
 {
     free(conference_message->message);
 }
@@ -124,7 +124,7 @@ bool tox_event_conference_message_pack(
            && bin_pack_bin(bp, event->message, event->message_length);
 }
 
-static bool tox_event_conference_message_unpack_into(non_null() Tox_Event_Conference_Message *event, non_null() Bin_Unpack *bu)
+static bool tox_event_conference_message_unpack_into(Tox_Event_Conference_Message *_Nonnull event, Bin_Unpack *_Nonnull bu)
 {
     assert(event != nullptr);
     if (!bin_unpack_array_fixed(bu, 4, nullptr)) {
@@ -169,7 +169,7 @@ void tox_event_conference_message_free(Tox_Event_Conference_Message *conference_
     mem_delete(mem, conference_message);
 }
 
-static Tox_Event_Conference_Message *tox_events_add_conference_message(non_null() Tox_Events *events, non_null() const Memory *mem)
+static Tox_Event_Conference_Message *tox_events_add_conference_message(Tox_Events *_Nonnull events, const Memory *_Nonnull mem)
 {
     Tox_Event_Conference_Message *const conference_message = tox_event_conference_message_new(mem);
 
@@ -202,7 +202,7 @@ bool tox_event_conference_message_unpack(
     return tox_event_conference_message_unpack_into(*event, bu);
 }
 
-static Tox_Event_Conference_Message *tox_event_conference_message_alloc(non_null() void *user_data)
+static Tox_Event_Conference_Message *tox_event_conference_message_alloc(void *_Nonnull user_data)
 {
     Tox_Events_State *state = tox_events_alloc(user_data);
     assert(state != nullptr);

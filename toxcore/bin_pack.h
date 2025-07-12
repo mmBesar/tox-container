@@ -44,7 +44,7 @@ typedef struct Bin_Pack Bin_Pack;
  * This function would typically cast the `void *` to the actual object pointer type and then call
  * more appropriately typed packing functions.
  */
-typedef bool bin_pack_cb(const void *obj, const Logger *logger, Bin_Pack *bp);
+typedef bool bin_pack_cb(const void *_Nullable obj, const Logger *_Nullable logger, Bin_Pack *_Nonnull bp);
 
 /** @brief Function used to pack an array of objects.
  *
@@ -54,7 +54,7 @@ typedef bool bin_pack_cb(const void *obj, const Logger *logger, Bin_Pack *bp);
  * @param arr is the object array as void pointer.
  * @param index is the index in the object array that is currently being packed.
  */
-typedef bool bin_pack_array_cb(const void *arr, uint32_t index, const Logger *logger, Bin_Pack *bp);
+typedef bool bin_pack_array_cb(const void *_Nullable arr, uint32_t index, const Logger *_Nullable logger, Bin_Pack *_Nonnull bp);
 
 /** @brief Determine the serialised size of an object.
  *
@@ -65,7 +65,7 @@ typedef bool bin_pack_array_cb(const void *arr, uint32_t index, const Logger *lo
  * @return The packed size of the passed object according to the callback.
  * @retval UINT32_MAX in case of errors such as buffer overflow.
  */
-uint32_t bin_pack_obj_size(non_null() bin_pack_cb *callback, nullable() const void *obj, nullable() const Logger *logger);
+uint32_t bin_pack_obj_size(bin_pack_cb *_Nonnull callback, const void *_Nullable obj, const Logger *_Nullable logger);
 /** @brief Pack an object into a buffer of a given size.
  *
  * This function creates and initialises a `Bin_Pack` packer object, calls the callback with the
@@ -86,7 +86,7 @@ uint32_t bin_pack_obj_size(non_null() bin_pack_cb *callback, nullable() const vo
  *
  * @retval false if an error occurred (e.g. buffer overflow).
  */
-bool bin_pack_obj(non_null() bin_pack_cb *callback, nullable() const void *obj, nullable() const Logger *logger, non_null() uint8_t *buf, uint32_t buf_size);
+bool bin_pack_obj(bin_pack_cb *_Nonnull callback, const void *_Nullable obj, const Logger *_Nullable logger, uint8_t *_Nonnull buf, uint32_t buf_size);
 /** @brief Determine the serialised size of an object array.
  *
  * Behaves exactly like `bin_pack_obj_b_array` but doesn't write.
@@ -100,7 +100,7 @@ bool bin_pack_obj(non_null() bin_pack_cb *callback, nullable() const void *obj, 
  * @return The packed size of the passed object array according to the callback.
  * @retval UINT32_MAX in case of errors such as buffer overflow.
  */
-uint32_t bin_pack_obj_array_b_size(non_null() bin_pack_array_cb *callback, nullable() const void *arr, uint32_t arr_size, nullable() const Logger *logger);
+uint32_t bin_pack_obj_array_b_size(bin_pack_array_cb *_Nonnull callback, const void *_Nullable arr, uint32_t arr_size, const Logger *_Nullable logger);
 /** @brief Pack an object array into a buffer of a given size.
  *
  * Similar to `bin_pack_obj_array` but does not write the array length, so
@@ -118,7 +118,7 @@ uint32_t bin_pack_obj_array_b_size(non_null() bin_pack_array_cb *callback, nulla
  *
  * @retval false if an error occurred (e.g. buffer overflow).
  */
-bool bin_pack_obj_array_b(non_null() bin_pack_array_cb *callback, nullable() const void *arr, uint32_t arr_size, nullable() const Logger *logger, non_null() uint8_t *buf, uint32_t buf_size);
+bool bin_pack_obj_array_b(bin_pack_array_cb *_Nonnull callback, const void *_Nullable arr, uint32_t arr_size, const Logger *_Nullable logger, uint8_t *_Nonnull buf, uint32_t buf_size);
 /** @brief Encode an object array as MessagePack array into a bin packer.
  *
  * Calls the callback `arr_size` times with increasing `index` argument from 0 to
@@ -142,48 +142,48 @@ bool bin_pack_obj_array_b(non_null() bin_pack_array_cb *callback, nullable() con
  *
  * @retval false if an error occurred (e.g. buffer overflow).
  */
-bool bin_pack_obj_array(non_null() Bin_Pack *bp, non_null() bin_pack_array_cb *callback, nullable() const void *arr, uint32_t arr_size, nullable() const Logger *logger);
+bool bin_pack_obj_array(Bin_Pack *_Nonnull bp, bin_pack_array_cb *_Nonnull callback, const void *_Nullable arr, uint32_t arr_size, const Logger *_Nullable logger);
 /** @brief Start packing a MessagePack array.
  *
  * A call to this function must be followed by exactly `size` calls to other functions below.
  */
-bool bin_pack_array(non_null() Bin_Pack *bp, uint32_t size);
+bool bin_pack_array(Bin_Pack *_Nonnull bp, uint32_t size);
 
 /** @brief Pack a MessagePack bool. */
-bool bin_pack_bool(non_null() Bin_Pack *bp, bool val);
+bool bin_pack_bool(Bin_Pack *_Nonnull bp, bool val);
 /** @brief Pack a `uint8_t` as MessagePack positive integer. */
-bool bin_pack_u08(non_null() Bin_Pack *bp, uint8_t val);
+bool bin_pack_u08(Bin_Pack *_Nonnull bp, uint8_t val);
 /** @brief Pack a `uint16_t` as MessagePack positive integer. */
-bool bin_pack_u16(non_null() Bin_Pack *bp, uint16_t val);
+bool bin_pack_u16(Bin_Pack *_Nonnull bp, uint16_t val);
 /** @brief Pack a `uint32_t` as MessagePack positive integer. */
-bool bin_pack_u32(non_null() Bin_Pack *bp, uint32_t val);
+bool bin_pack_u32(Bin_Pack *_Nonnull bp, uint32_t val);
 /** @brief Pack a `uint64_t` as MessagePack positive integer. */
-bool bin_pack_u64(non_null() Bin_Pack *bp, uint64_t val);
+bool bin_pack_u64(Bin_Pack *_Nonnull bp, uint64_t val);
 /** @brief Pack an empty array member as a MessagePack nil value. */
-bool bin_pack_nil(non_null() Bin_Pack *bp);
+bool bin_pack_nil(Bin_Pack *_Nonnull bp);
 /** @brief Pack a byte array as MessagePack bin. */
-bool bin_pack_bin(non_null() Bin_Pack *bp, non_null() const uint8_t *data, uint32_t length);
+bool bin_pack_bin(Bin_Pack *_Nonnull bp, const uint8_t *_Nonnull data, uint32_t length);
 /** @brief Start packing a custom binary representation.
  *
  * A call to this function must be followed by exactly `size` bytes packed by functions below.
  */
-bool bin_pack_bin_marker(non_null() Bin_Pack *bp, uint32_t size);
+bool bin_pack_bin_marker(Bin_Pack *_Nonnull bp, uint32_t size);
 
 /** @brief Write a `uint8_t` directly to the packer in 1 byte. */
-bool bin_pack_u08_b(non_null() Bin_Pack *bp, uint8_t val);
+bool bin_pack_u08_b(Bin_Pack *_Nonnull bp, uint8_t val);
 /** @brief Write a `uint16_t` as big endian 16 bit int in 2 bytes. */
-bool bin_pack_u16_b(non_null() Bin_Pack *bp, uint16_t val);
+bool bin_pack_u16_b(Bin_Pack *_Nonnull bp, uint16_t val);
 /** @brief Write a `uint32_t` as big endian 32 bit int in 4 bytes. */
-bool bin_pack_u32_b(non_null() Bin_Pack *bp, uint32_t val);
+bool bin_pack_u32_b(Bin_Pack *_Nonnull bp, uint32_t val);
 /** @brief Write a `uint64_t` as big endian 64 bit int in 8 bytes. */
-bool bin_pack_u64_b(non_null() Bin_Pack *bp, uint64_t val);
+bool bin_pack_u64_b(Bin_Pack *_Nonnull bp, uint64_t val);
 
 /** @brief Write a byte array directly to the packer in `length` bytes.
  *
  * Note that unless you prepend the array length manually, there is no record of it in the resulting
  * serialised representation.
  */
-bool bin_pack_bin_b(non_null() Bin_Pack *bp, non_null() const uint8_t *data, uint32_t length);
+bool bin_pack_bin_b(Bin_Pack *_Nonnull bp, const uint8_t *_Nonnull data, uint32_t length);
 
 #ifdef __cplusplus
 } /* extern "C" */

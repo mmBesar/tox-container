@@ -29,7 +29,7 @@ struct Tox_Event_File_Recv_Control {
     Tox_File_Control control;
 };
 
-static void tox_event_file_recv_control_set_friend_number(non_null() Tox_Event_File_Recv_Control *file_recv_control, uint32_t friend_number)
+static void tox_event_file_recv_control_set_friend_number(Tox_Event_File_Recv_Control *_Nonnull file_recv_control, uint32_t friend_number)
 {
     assert(file_recv_control != nullptr);
     file_recv_control->friend_number = friend_number;
@@ -40,7 +40,7 @@ uint32_t tox_event_file_recv_control_get_friend_number(const Tox_Event_File_Recv
     return file_recv_control->friend_number;
 }
 
-static void tox_event_file_recv_control_set_file_number(non_null() Tox_Event_File_Recv_Control *file_recv_control, uint32_t file_number)
+static void tox_event_file_recv_control_set_file_number(Tox_Event_File_Recv_Control *_Nonnull file_recv_control, uint32_t file_number)
 {
     assert(file_recv_control != nullptr);
     file_recv_control->file_number = file_number;
@@ -51,7 +51,7 @@ uint32_t tox_event_file_recv_control_get_file_number(const Tox_Event_File_Recv_C
     return file_recv_control->file_number;
 }
 
-static void tox_event_file_recv_control_set_control(non_null() Tox_Event_File_Recv_Control *file_recv_control, Tox_File_Control control)
+static void tox_event_file_recv_control_set_control(Tox_Event_File_Recv_Control *_Nonnull file_recv_control, Tox_File_Control control)
 {
     assert(file_recv_control != nullptr);
     file_recv_control->control = control;
@@ -62,13 +62,13 @@ Tox_File_Control tox_event_file_recv_control_get_control(const Tox_Event_File_Re
     return file_recv_control->control;
 }
 
-static void tox_event_file_recv_control_construct(non_null() Tox_Event_File_Recv_Control *file_recv_control)
+static void tox_event_file_recv_control_construct(Tox_Event_File_Recv_Control *_Nonnull file_recv_control)
 {
     *file_recv_control = (Tox_Event_File_Recv_Control) {
         0
     };
 }
-static void tox_event_file_recv_control_destruct(non_null() Tox_Event_File_Recv_Control *file_recv_control, non_null() const Memory *mem)
+static void tox_event_file_recv_control_destruct(Tox_Event_File_Recv_Control *_Nonnull file_recv_control, const Memory *_Nonnull mem)
 {
     return;
 }
@@ -82,7 +82,7 @@ bool tox_event_file_recv_control_pack(
            && tox_file_control_pack(event->control, bp);
 }
 
-static bool tox_event_file_recv_control_unpack_into(non_null() Tox_Event_File_Recv_Control *event, non_null() Bin_Unpack *bu)
+static bool tox_event_file_recv_control_unpack_into(Tox_Event_File_Recv_Control *_Nonnull event, Bin_Unpack *_Nonnull bu)
 {
     assert(event != nullptr);
     if (!bin_unpack_array_fixed(bu, 3, nullptr)) {
@@ -126,7 +126,7 @@ void tox_event_file_recv_control_free(Tox_Event_File_Recv_Control *file_recv_con
     mem_delete(mem, file_recv_control);
 }
 
-static Tox_Event_File_Recv_Control *tox_events_add_file_recv_control(non_null() Tox_Events *events, non_null() const Memory *mem)
+static Tox_Event_File_Recv_Control *tox_events_add_file_recv_control(Tox_Events *_Nonnull events, const Memory *_Nonnull mem)
 {
     Tox_Event_File_Recv_Control *const file_recv_control = tox_event_file_recv_control_new(mem);
 
@@ -159,7 +159,7 @@ bool tox_event_file_recv_control_unpack(
     return tox_event_file_recv_control_unpack_into(*event, bu);
 }
 
-static Tox_Event_File_Recv_Control *tox_event_file_recv_control_alloc(non_null() void *user_data)
+static Tox_Event_File_Recv_Control *tox_event_file_recv_control_alloc(void *_Nonnull user_data)
 {
     Tox_Events_State *state = tox_events_alloc(user_data);
     assert(state != nullptr);

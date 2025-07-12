@@ -74,7 +74,7 @@ bool group_voice_state_from_int(uint8_t value, Group_Voice_State *out_enum)
     }
 }
 
-static bool load_unpack_state_values(non_null() GC_Chat *chat, non_null() Bin_Unpack *bu)
+static bool load_unpack_state_values(GC_Chat *_Nonnull chat, Bin_Unpack *_Nonnull bu)
 {
     if (!bin_unpack_array_fixed(bu, 8, nullptr)) {
         LOGGER_ERROR(chat->log, "Group state values array malformed");
@@ -109,7 +109,7 @@ static bool load_unpack_state_values(non_null() GC_Chat *chat, non_null() Bin_Un
     return true;
 }
 
-static bool load_unpack_state_bin(non_null() GC_Chat *chat, non_null() Bin_Unpack *bu)
+static bool load_unpack_state_bin(GC_Chat *_Nonnull chat, Bin_Unpack *_Nonnull bu)
 {
     if (!bin_unpack_array_fixed(bu, 5, nullptr)) {
         LOGGER_ERROR(chat->log, "Group state binary array malformed");
@@ -136,7 +136,7 @@ static bool load_unpack_state_bin(non_null() GC_Chat *chat, non_null() Bin_Unpac
     return true;
 }
 
-static bool load_unpack_topic_info(non_null() GC_Chat *chat, non_null() Bin_Unpack *bu)
+static bool load_unpack_topic_info(GC_Chat *_Nonnull chat, Bin_Unpack *_Nonnull bu)
 {
     if (!bin_unpack_array_fixed(bu, 6, nullptr)) {
         LOGGER_ERROR(chat->log, "Group topic array malformed");
@@ -156,7 +156,7 @@ static bool load_unpack_topic_info(non_null() GC_Chat *chat, non_null() Bin_Unpa
     return true;
 }
 
-static bool load_unpack_mod_list(non_null() GC_Chat *chat, non_null() Bin_Unpack *bu)
+static bool load_unpack_mod_list(GC_Chat *_Nonnull chat, Bin_Unpack *_Nonnull bu)
 {
     uint32_t actual_size = 0;
     if (!bin_unpack_array_fixed(bu, 2, &actual_size)) {
@@ -205,7 +205,7 @@ static bool load_unpack_mod_list(non_null() GC_Chat *chat, non_null() Bin_Unpack
     return true;
 }
 
-static bool load_unpack_keys(non_null() GC_Chat *chat, non_null() Bin_Unpack *bu)
+static bool load_unpack_keys(GC_Chat *_Nonnull chat, Bin_Unpack *_Nonnull bu)
 {
     if (!bin_unpack_array_fixed(bu, 4, nullptr)) {
         LOGGER_ERROR(chat->log, "Group keys array malformed");
@@ -223,7 +223,7 @@ static bool load_unpack_keys(non_null() GC_Chat *chat, non_null() Bin_Unpack *bu
     return true;
 }
 
-static bool load_unpack_self_info(non_null() GC_Chat *chat, non_null() Bin_Unpack *bu)
+static bool load_unpack_self_info(GC_Chat *_Nonnull chat, Bin_Unpack *_Nonnull bu)
 {
     if (!bin_unpack_array_fixed(bu, 4, nullptr)) {
         LOGGER_ERROR(chat->log, "Group self info array malformed");
@@ -275,7 +275,7 @@ static bool load_unpack_self_info(non_null() GC_Chat *chat, non_null() Bin_Unpac
     return true;
 }
 
-static bool load_unpack_saved_peers(non_null() GC_Chat *chat, non_null() Bin_Unpack *bu)
+static bool load_unpack_saved_peers(GC_Chat *_Nonnull chat, Bin_Unpack *_Nonnull bu)
 {
     if (!bin_unpack_array_fixed(bu, 2, nullptr)) {
         LOGGER_ERROR(chat->log, "Group saved peers array malformed");
@@ -334,7 +334,7 @@ bool gc_load_unpack_group(GC_Chat *chat, Bin_Unpack *bu)
            && load_unpack_saved_peers(chat, bu);
 }
 
-static void save_pack_state_values(non_null() const GC_Chat *chat, non_null() Bin_Pack *bp)
+static void save_pack_state_values(const GC_Chat *_Nonnull chat, Bin_Pack *_Nonnull bp)
 {
     bin_pack_array(bp, 8);
     bin_pack_bool(bp, chat->connection_state == CS_DISCONNECTED); // 1
@@ -347,7 +347,7 @@ static void save_pack_state_values(non_null() const GC_Chat *chat, non_null() Bi
     bin_pack_u08(bp, chat->shared_state.voice_state); // 8
 }
 
-static void save_pack_state_bin(non_null() const GC_Chat *chat, non_null() Bin_Pack *bp)
+static void save_pack_state_bin(const GC_Chat *_Nonnull chat, Bin_Pack *_Nonnull bp)
 {
     bin_pack_array(bp, 5);
 
@@ -358,7 +358,7 @@ static void save_pack_state_bin(non_null() const GC_Chat *chat, non_null() Bin_P
     bin_pack_bin(bp, chat->shared_state.mod_list_hash, MOD_MODERATION_HASH_SIZE); // 5
 }
 
-static void save_pack_topic_info(non_null() const GC_Chat *chat, non_null() Bin_Pack *bp)
+static void save_pack_topic_info(const GC_Chat *_Nonnull chat, Bin_Pack *_Nonnull bp)
 {
     bin_pack_array(bp, 6);
 
@@ -370,7 +370,7 @@ static void save_pack_topic_info(non_null() const GC_Chat *chat, non_null() Bin_
     bin_pack_bin(bp, chat->topic_sig, SIGNATURE_SIZE); // 6
 }
 
-static void save_pack_mod_list(non_null() const GC_Chat *chat, non_null() Bin_Pack *bp)
+static void save_pack_mod_list(const GC_Chat *_Nonnull chat, Bin_Pack *_Nonnull bp)
 {
     bin_pack_array(bp, 2);
 
@@ -403,7 +403,7 @@ static void save_pack_mod_list(non_null() const GC_Chat *chat, non_null() Bin_Pa
     mem_delete(chat->mem, packed_mod_list);
 }
 
-static void save_pack_keys(non_null() const GC_Chat *chat, non_null() Bin_Pack *bp)
+static void save_pack_keys(const GC_Chat *_Nonnull chat, Bin_Pack *_Nonnull bp)
 {
     bin_pack_array(bp, 4);
 
@@ -413,7 +413,7 @@ static void save_pack_keys(non_null() const GC_Chat *chat, non_null() Bin_Pack *
     pack_extended_secret_key(&chat->self_secret_key, bp); // 4
 }
 
-static void save_pack_self_info(non_null() const GC_Chat *chat, non_null() Bin_Pack *bp)
+static void save_pack_self_info(const GC_Chat *_Nonnull chat, Bin_Pack *_Nonnull bp)
 {
     bin_pack_array(bp, 4);
 
@@ -430,7 +430,7 @@ static void save_pack_self_info(non_null() const GC_Chat *chat, non_null() Bin_P
     bin_pack_bin(bp, self->nick, self->nick_length); // 4
 }
 
-static void save_pack_saved_peers(non_null() const GC_Chat *chat, non_null() Bin_Pack *bp)
+static void save_pack_saved_peers(const GC_Chat *_Nonnull chat, Bin_Pack *_Nonnull bp)
 {
     bin_pack_array(bp, 2);
 

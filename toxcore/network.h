@@ -36,22 +36,22 @@ typedef struct Socket {
 int net_socket_to_native(Socket sock);
 Socket net_socket_from_native(int sock);
 
-typedef int net_close_cb(void *obj, Socket sock);
-typedef Socket net_accept_cb(void *obj, Socket sock);
-typedef int net_bind_cb(void *obj, Socket sock, const Network_Addr *addr);
-typedef int net_listen_cb(void *obj, Socket sock, int backlog);
-typedef int net_connect_cb(void *obj, Socket sock, const Network_Addr *addr);
-typedef int net_recvbuf_cb(void *obj, Socket sock);
-typedef int net_recv_cb(void *obj, Socket sock, uint8_t *buf, size_t len);
-typedef int net_recvfrom_cb(void *obj, Socket sock, uint8_t *buf, size_t len, Network_Addr *addr);
-typedef int net_send_cb(void *obj, Socket sock, const uint8_t *buf, size_t len);
-typedef int net_sendto_cb(void *obj, Socket sock, const uint8_t *buf, size_t len, const Network_Addr *addr);
-typedef Socket net_socket_cb(void *obj, int domain, int type, int proto);
-typedef int net_socket_nonblock_cb(void *obj, Socket sock, bool nonblock);
-typedef int net_getsockopt_cb(void *obj, Socket sock, int level, int optname, void *optval, size_t *optlen);
-typedef int net_setsockopt_cb(void *obj, Socket sock, int level, int optname, const void *optval, size_t optlen);
-typedef int net_getaddrinfo_cb(void *obj, const Memory *mem, const char *address, int family, int protocol, Network_Addr **addrs);
-typedef int net_freeaddrinfo_cb(void *obj, const Memory *mem, Network_Addr *addrs);
+typedef int net_close_cb(void *_Nullable obj, Socket sock);
+typedef Socket net_accept_cb(void *_Nullable obj, Socket sock);
+typedef int net_bind_cb(void *_Nullable obj, Socket sock, const Network_Addr *_Nonnull addr);
+typedef int net_listen_cb(void *_Nullable obj, Socket sock, int backlog);
+typedef int net_connect_cb(void *_Nullable obj, Socket sock, const Network_Addr *_Nonnull addr);
+typedef int net_recvbuf_cb(void *_Nullable obj, Socket sock);
+typedef int net_recv_cb(void *_Nullable obj, Socket sock, uint8_t *_Nonnull buf, size_t len);
+typedef int net_recvfrom_cb(void *_Nullable obj, Socket sock, uint8_t *_Nonnull buf, size_t len, Network_Addr *_Nonnull addr);
+typedef int net_send_cb(void *_Nullable obj, Socket sock, const uint8_t *_Nonnull buf, size_t len);
+typedef int net_sendto_cb(void *_Nullable obj, Socket sock, const uint8_t *_Nonnull buf, size_t len, const Network_Addr *_Nonnull addr);
+typedef Socket net_socket_cb(void *_Nullable obj, int domain, int type, int proto);
+typedef int net_socket_nonblock_cb(void *_Nullable obj, Socket sock, bool nonblock);
+typedef int net_getsockopt_cb(void *_Nullable obj, Socket sock, int level, int optname, void *_Nonnull optval, size_t *_Nonnull optlen);
+typedef int net_setsockopt_cb(void *_Nullable obj, Socket sock, int level, int optname, const void *_Nonnull optval, size_t optlen);
+typedef int net_getaddrinfo_cb(void *_Nullable obj, const Memory *_Nonnull mem, const char *_Nonnull address, int family, int protocol, Network_Addr *_Nullable *_Nonnull addrs);
+typedef int net_freeaddrinfo_cb(void *_Nullable obj, const Memory *_Nonnull mem, Network_Addr *_Nullable addrs);
 
 /** @brief Functions wrapping POSIX network functions.
  *
@@ -59,30 +59,30 @@ typedef int net_freeaddrinfo_cb(void *obj, const Memory *mem, Network_Addr *addr
  * expected to do when providing alternative Network implementations.
  */
 typedef struct Network_Funcs {
-    net_close_cb *close;
-    net_accept_cb *accept;
-    net_bind_cb *bind;
-    net_listen_cb *listen;
-    net_connect_cb *connect;
-    net_recvbuf_cb *recvbuf;
-    net_recv_cb *recv;
-    net_recvfrom_cb *recvfrom;
-    net_send_cb *send;
-    net_sendto_cb *sendto;
-    net_socket_cb *socket;
-    net_socket_nonblock_cb *socket_nonblock;
-    net_getsockopt_cb *getsockopt;
-    net_setsockopt_cb *setsockopt;
-    net_getaddrinfo_cb *getaddrinfo;
-    net_freeaddrinfo_cb *freeaddrinfo;
+    net_close_cb *_Nullable close;
+    net_accept_cb *_Nullable accept;
+    net_bind_cb *_Nullable bind;
+    net_listen_cb *_Nullable listen;
+    net_connect_cb *_Nullable connect;
+    net_recvbuf_cb *_Nullable recvbuf;
+    net_recv_cb *_Nullable recv;
+    net_recvfrom_cb *_Nullable recvfrom;
+    net_send_cb *_Nullable send;
+    net_sendto_cb *_Nullable sendto;
+    net_socket_cb *_Nullable socket;
+    net_socket_nonblock_cb *_Nullable socket_nonblock;
+    net_getsockopt_cb *_Nullable getsockopt;
+    net_setsockopt_cb *_Nullable setsockopt;
+    net_getaddrinfo_cb *_Nullable getaddrinfo;
+    net_freeaddrinfo_cb *_Nullable freeaddrinfo;
 } Network_Funcs;
 
 typedef struct Network {
-    const Network_Funcs *funcs;
-    void *obj;
+    const Network_Funcs *_Nullable funcs;
+    void *_Nullable obj;
 } Network;
 
-const Network *os_network(void);
+const Network *_Nullable os_network(void);
 
 typedef struct Family {
     uint8_t value;
@@ -222,7 +222,7 @@ typedef struct IP_Port {
     uint16_t port;
 } IP_Port;
 
-Socket net_socket(non_null() const Network *ns, Family domain, int type, int protocol);
+Socket net_socket(const Network *_Nonnull ns, Family domain, int type, int protocol);
 
 /**
  * Check if socket is valid.
@@ -244,8 +244,8 @@ Socket net_invalid_socket(void);
  * @param ip_port IP and port to send data to.
  * @param net_profile Network profile to record the packet.
  */
-int net_send(non_null() const Network *ns, non_null() const Logger *log, Socket sock, non_null() const uint8_t *buf, size_t len, non_null() const IP_Port *ip_port,
-             nullable() Net_Profile *net_profile);
+int net_send(const Network *_Nonnull ns, const Logger *_Nonnull log, Socket sock, const uint8_t *_Nonnull buf, size_t len, const IP_Port *_Nonnull ip_port,
+             Net_Profile *_Nullable net_profile);
 /**
  * Calls recv(sockfd, buf, len, MSG_NOSIGNAL).
  *
@@ -256,21 +256,21 @@ int net_send(non_null() const Network *ns, non_null() const Logger *log, Socket 
  * @param len Length of buffer.
  * @param ip_port IP and port of the sender.
  */
-int net_recv(non_null() const Network *ns, non_null() const Logger *log, Socket sock, non_null() uint8_t *buf, size_t len, non_null() const IP_Port *ip_port);
+int net_recv(const Network *_Nonnull ns, const Logger *_Nonnull log, Socket sock, uint8_t *_Nonnull buf, size_t len, const IP_Port *_Nonnull ip_port);
 /**
  * Calls listen(sockfd, backlog).
  */
-int net_listen(non_null() const Network *ns, Socket sock, int backlog);
+int net_listen(const Network *_Nonnull ns, Socket sock, int backlog);
 /**
  * Calls accept(sockfd, nullptr, nullptr).
  */
-Socket net_accept(non_null() const Network *ns, Socket sock);
+Socket net_accept(const Network *_Nonnull ns, Socket sock);
 
 /**
  * return the size of data in the tcp recv buffer.
  * return 0 on failure.
  */
-uint16_t net_socket_data_recv_buffer(non_null() const Network *ns, Socket sock);
+uint16_t net_socket_data_recv_buffer(const Network *_Nonnull ns, Socket sock);
 
 /** Convert values between host and network byte order. */
 uint32_t net_htonl(uint32_t hostlong);
@@ -278,18 +278,18 @@ uint16_t net_htons(uint16_t hostshort);
 uint32_t net_ntohl(uint32_t hostlong);
 uint16_t net_ntohs(uint16_t hostshort);
 
-size_t net_pack_bool(non_null() uint8_t *bytes, bool v);
-size_t net_pack_u16(non_null() uint8_t *bytes, uint16_t v);
-size_t net_pack_u32(non_null() uint8_t *bytes, uint32_t v);
-size_t net_pack_u64(non_null() uint8_t *bytes, uint64_t v);
+size_t net_pack_bool(uint8_t *_Nonnull bytes, bool v);
+size_t net_pack_u16(uint8_t *_Nonnull bytes, uint16_t v);
+size_t net_pack_u32(uint8_t *_Nonnull bytes, uint32_t v);
+size_t net_pack_u64(uint8_t *_Nonnull bytes, uint64_t v);
 
-size_t net_unpack_bool(non_null() const uint8_t *bytes, non_null() bool *v);
-size_t net_unpack_u16(non_null() const uint8_t *bytes, non_null() uint16_t *v);
-size_t net_unpack_u32(non_null() const uint8_t *bytes, non_null() uint32_t *v);
-size_t net_unpack_u64(non_null() const uint8_t *bytes, non_null() uint64_t *v);
+size_t net_unpack_bool(const uint8_t *_Nonnull bytes, bool *_Nonnull v);
+size_t net_unpack_u16(const uint8_t *_Nonnull bytes, uint16_t *_Nonnull v);
+size_t net_unpack_u32(const uint8_t *_Nonnull bytes, uint32_t *_Nonnull v);
+size_t net_unpack_u64(const uint8_t *_Nonnull bytes, uint64_t *_Nonnull v);
 
 /** Does the IP6 struct a contain an IPv4 address in an IPv6 one? */
-bool ipv6_ipv4_in_v6(non_null() const IP6 *a);
+bool ipv6_ipv4_in_v6(const IP6 *_Nonnull a);
 
 #define TOX_ENABLE_IPV6_DEFAULT true
 
@@ -314,7 +314,7 @@ typedef struct Ip_Ntoa {
  *
  * @return Pointer to the buffer inside `ip_str` containing the IP string.
  */
-const char *net_ip_ntoa(non_null() const IP *ip, non_null() Ip_Ntoa *ip_str);
+const char *_Nonnull net_ip_ntoa(const IP *_Nonnull ip, Ip_Ntoa *_Nonnull ip_str);
 
 /**
  * Parses IP structure into an address string.
@@ -328,7 +328,7 @@ const char *net_ip_ntoa(non_null() const IP *ip, non_null() Ip_Ntoa *ip_str);
  *
  * @return true on success, false on failure.
  */
-bool ip_parse_addr(non_null() const IP *ip, non_null() char *address, size_t length);
+bool ip_parse_addr(const IP *_Nonnull ip, char *_Nonnull address, size_t length);
 
 /**
  * Directly parses the input into an IP structure.
@@ -340,7 +340,7 @@ bool ip_parse_addr(non_null() const IP *ip, non_null() char *address, size_t len
  *
  * @return true on success, false on failure.
  */
-bool addr_parse_ip(non_null() const char *address, non_null() IP *to);
+bool addr_parse_ip(const char *_Nonnull address, IP *_Nonnull to);
 
 /**
  * Compares two IP structures.
@@ -349,7 +349,7 @@ bool addr_parse_ip(non_null() const char *address, non_null() IP *to);
  *
  * @return false when not equal or when uninitialized.
  */
-bool ip_equal(nullable() const IP *a, nullable() const IP *b);
+bool ip_equal(const IP *_Nullable a, const IP *_Nullable b);
 /**
  * Compares two IP_Port structures.
  *
@@ -357,7 +357,7 @@ bool ip_equal(nullable() const IP *a, nullable() const IP *b);
  *
  * @return false when not equal or when uninitialized.
  */
-bool ipport_equal(nullable() const IP_Port *a, nullable() const IP_Port *b);
+bool ipport_equal(const IP_Port *_Nullable a, const IP_Port *_Nullable b);
 /**
  * @brief IP_Port comparison function with `memcmp` signature.
  *
@@ -367,22 +367,22 @@ bool ipport_equal(nullable() const IP_Port *a, nullable() const IP_Port *b);
  * @retval 0 if `a == b`
  * @retval 1 if `a > b`
  */
-int ipport_cmp_handler(non_null() const void *a, non_null() const void *b, size_t size);
+int ipport_cmp_handler(const void *_Nonnull a, const void *_Nonnull b, size_t size);
 
 /** nulls out ip */
-void ip_reset(non_null() IP *ip);
+void ip_reset(IP *_Nonnull ip);
 /** nulls out ip_port */
-void ipport_reset(non_null() IP_Port *ipport);
+void ipport_reset(IP_Port *_Nonnull ipport);
 /** nulls out ip, sets family according to flag */
-void ip_init(non_null() IP *ip, bool ipv6enabled);
+void ip_init(IP *_Nonnull ip, bool ipv6enabled);
 /** checks if ip is valid */
-bool ip_isset(non_null() const IP *ip);
+bool ip_isset(const IP *_Nonnull ip);
 /** checks if ip is valid */
-bool ipport_isset(non_null() const IP_Port *ipport);
+bool ipport_isset(const IP_Port *_Nonnull ipport);
 /** copies an ip structure (careful about direction) */
-void ip_copy(non_null() IP *target, non_null() const IP *source);
+void ip_copy(IP *_Nonnull target, const IP *_Nonnull source);
 /** copies an ip_port structure (careful about direction) */
-void ipport_copy(non_null() IP_Port *target, non_null() const IP_Port *source);
+void ipport_copy(IP_Port *_Nonnull target, const IP_Port *_Nonnull source);
 
 /**
  * @brief Resolves string into an IP address.
@@ -400,48 +400,48 @@ void ipport_copy(non_null() IP_Port *target, non_null() const IP_Port *source);
  *
  * @return true on success, false on failure
  */
-bool addr_resolve_or_parse_ip(non_null() const Network *ns, non_null() const Memory *mem, non_null() const char *address, non_null() IP *to, nullable() IP *extra, bool dns_enabled);
+bool addr_resolve_or_parse_ip(const Network *_Nonnull ns, const Memory *_Nonnull mem, const char *_Nonnull address, IP *_Nonnull to, IP *_Nullable extra, bool dns_enabled);
 /** @brief Function to receive data, ip and port of sender is put into ip_port.
  * Packet data is put into data.
  * Packet length is put into length.
  */
-typedef int packet_handler_cb(void *object, const IP_Port *source, const uint8_t *packet, uint16_t length, void *userdata);
+typedef int packet_handler_cb(void *_Nullable object, const IP_Port *_Nonnull source, const uint8_t *_Nonnull packet, uint16_t length, void *_Nullable userdata);
 
 typedef struct Networking_Core Networking_Core;
 
-Family net_family(non_null() const Networking_Core *net);
-uint16_t net_port(non_null() const Networking_Core *net);
+Family net_family(const Networking_Core *_Nonnull net);
+uint16_t net_port(const Networking_Core *_Nonnull net);
 
 /** Close the socket. */
-void kill_sock(non_null() const Network *ns, Socket sock);
+void kill_sock(const Network *_Nonnull ns, Socket sock);
 
 /**
  * Set socket as nonblocking
  *
  * @return true on success, false on failure.
  */
-bool set_socket_nonblock(non_null() const Network *ns, Socket sock);
+bool set_socket_nonblock(const Network *_Nonnull ns, Socket sock);
 
 /**
  * Set socket to not emit SIGPIPE
  *
  * @return true on success, false on failure.
  */
-bool set_socket_nosigpipe(non_null() const Network *ns, Socket sock);
+bool set_socket_nosigpipe(const Network *_Nonnull ns, Socket sock);
 
 /**
  * Enable SO_REUSEADDR on socket.
  *
  * @return true on success, false on failure.
  */
-bool set_socket_reuseaddr(non_null() const Network *ns, Socket sock);
+bool set_socket_reuseaddr(const Network *_Nonnull ns, Socket sock);
 
 /**
  * Set socket to dual (IPv4 + IPv6 socket)
  *
  * @return true on success, false on failure.
  */
-bool set_socket_dualstack(non_null() const Network *ns, Socket sock);
+bool set_socket_dualstack(const Network *_Nonnull ns, Socket sock);
 
 /* Basic network functions: */
 
@@ -451,33 +451,33 @@ bool set_socket_dualstack(non_null() const Network *ns, Socket sock);
  * Use `send_packet` to send it to an IP/port endpoint.
  */
 typedef struct Packet {
-    const uint8_t *data;
+    const uint8_t *_Nonnull data;
     uint16_t length;
 } Packet;
 
 /**
  * Function to send a network packet to a given IP/port.
  */
-int send_packet(non_null() const Networking_Core *net, non_null() const IP_Port *ip_port, Packet packet);
+int send_packet(const Networking_Core *_Nonnull net, const IP_Port *_Nonnull ip_port, Packet packet);
 
 /**
  * Function to send packet(data) of length length to ip_port.
  *
  * @deprecated Use send_packet instead.
  */
-int sendpacket(non_null() const Networking_Core *net, non_null() const IP_Port *ip_port, non_null() const uint8_t *data, uint16_t length);
+int sendpacket(const Networking_Core *_Nonnull net, const IP_Port *_Nonnull ip_port, const uint8_t *_Nonnull data, uint16_t length);
 
 /** Function to call when packet beginning with byte is received. */
-void networking_registerhandler(non_null() Networking_Core *net, uint8_t byte, nullable() packet_handler_cb *cb, nullable() void *object);
+void networking_registerhandler(Networking_Core *_Nonnull net, uint8_t byte, packet_handler_cb *_Nullable cb, void *_Nullable object);
 /** Call this several times a second. */
-void networking_poll(non_null() const Networking_Core *net, nullable() void *userdata);
+void networking_poll(const Networking_Core *_Nonnull net, void *_Nullable userdata);
 typedef enum Net_Err_Connect {
     NET_ERR_CONNECT_OK,
     NET_ERR_CONNECT_INVALID_FAMILY,
     NET_ERR_CONNECT_FAILED,
 } Net_Err_Connect;
 
-const char *net_err_connect_to_string(Net_Err_Connect err);
+const char *_Nonnull net_err_connect_to_string(Net_Err_Connect err);
 
 /** @brief Connect a socket to the address specified by the ip_port.
  *
@@ -485,7 +485,7 @@ const char *net_err_connect_to_string(Net_Err_Connect err);
  *
  * @retval true on success, false on failure.
  */
-bool net_connect(non_null() const Network *ns, non_null() const Memory *mem, non_null() const Logger *log, Socket sock, non_null() const IP_Port *ip_port, non_null() Net_Err_Connect *err);
+bool net_connect(const Network *_Nonnull ns, const Memory *_Nonnull mem, const Logger *_Nonnull log, Socket sock, const IP_Port *_Nonnull ip_port, Net_Err_Connect *_Nonnull err);
 
 /** @brief High-level getaddrinfo implementation.
  *
@@ -507,11 +507,11 @@ bool net_connect(non_null() const Network *ns, non_null() const Memory *mem, non
  * @retval 0 if res array empty.
  * @retval -1 on error.
  */
-int32_t net_getipport(non_null() const Network *ns, non_null() const Memory *mem, non_null() const char *node, non_null() IP_Port **res, int tox_type, bool dns_enabled);
+int32_t net_getipport(const Network *_Nonnull ns, const Memory *_Nonnull mem, const char *_Nonnull node, IP_Port *_Nullable *_Nonnull res, int tox_type, bool dns_enabled);
 
 /** Deallocates memory allocated by net_getipport */
-void net_freeipport(non_null() const Memory *mem, nullable() IP_Port *ip_ports);
-bool bin_pack_ip_port(non_null() Bin_Pack *bp, non_null() const Logger *logger, non_null() const IP_Port *ip_port);
+void net_freeipport(const Memory *_Nonnull mem, IP_Port *_Nullable ip_ports);
+bool bin_pack_ip_port(Bin_Pack *_Nonnull bp, const Logger *_Nonnull logger, const IP_Port *_Nonnull ip_port);
 
 /** @brief Pack an IP_Port structure into data of max size length.
  *
@@ -520,7 +520,7 @@ bool bin_pack_ip_port(non_null() Bin_Pack *bp, non_null() const Logger *logger, 
  * @return size of packed IP_Port data on success.
  * @retval -1 on failure.
  */
-int pack_ip_port(non_null() const Logger *logger, non_null() uint8_t *data, uint16_t length, non_null() const IP_Port *ip_port);
+int pack_ip_port(const Logger *_Nonnull logger, uint8_t *_Nonnull data, uint16_t length, const IP_Port *_Nonnull ip_port);
 
 /** @brief Unpack IP_Port structure from data of max size length into ip_port.
  *
@@ -529,12 +529,12 @@ int pack_ip_port(non_null() const Logger *logger, non_null() uint8_t *data, uint
  * @return size of unpacked ip_port on success.
  * @retval -1 on failure.
  */
-int unpack_ip_port(non_null() IP_Port *ip_port, non_null() const uint8_t *data, uint16_t length, bool tcp_enabled);
+int unpack_ip_port(IP_Port *_Nonnull ip_port, const uint8_t *_Nonnull data, uint16_t length, bool tcp_enabled);
 
 /**
  * @return true on success, false on failure.
  */
-bool bind_to_port(non_null() const Network *ns, Socket sock, Family family, uint16_t port);
+bool bind_to_port(const Network *_Nonnull ns, Socket sock, Family family, uint16_t port);
 
 /** @brief Get the last networking error code.
  *
@@ -568,7 +568,7 @@ typedef struct Net_Strerror {
  *
  * @return pointer to a NULL-terminated string describing the error code.
  */
-char *net_strerror(int error, non_null() Net_Strerror *buf);
+char *_Nonnull net_strerror(int error, Net_Strerror *_Nonnull buf);
 
 /** @brief Initialize networking.
  * Bind to ip and port.
@@ -580,18 +580,18 @@ char *net_strerror(int error, non_null() Net_Strerror *buf);
  *
  * If error is non NULL it is set to 0 if no issues, 1 if socket related error, 2 if other.
  */
-Networking_Core *new_networking_ex(
-    non_null() const Logger *log, non_null() const Memory *mem, non_null() const Network *ns, non_null() const IP *ip,
-    uint16_t port_from, uint16_t port_to, nullable() unsigned int *error);
-Networking_Core *new_networking_no_udp(non_null() const Logger *log, non_null() const Memory *mem, non_null() const Network *ns);
+Networking_Core *_Nullable new_networking_ex(
+    const Logger *_Nonnull log, const Memory *_Nonnull mem, const Network *_Nonnull ns, const IP *_Nonnull ip,
+    uint16_t port_from, uint16_t port_to, unsigned int *_Nullable error);
+Networking_Core *_Nullable new_networking_no_udp(const Logger *_Nonnull log, const Memory *_Nonnull mem, const Network *_Nonnull ns);
 
 /** Function to cleanup networking stuff (doesn't do much right now). */
-void kill_networking(nullable() Networking_Core *net);
+void kill_networking(Networking_Core *_Nullable net);
 /** @brief Returns a pointer to the network net_profile object associated with `net`.
  *
  * Returns null if `net` is null.
  */
-const Net_Profile *net_get_net_profile(non_null() const Networking_Core *net);
+const Net_Profile *_Nullable net_get_net_profile(const Networking_Core *_Nonnull net);
 
 #ifdef __cplusplus
 } /* extern "C" */

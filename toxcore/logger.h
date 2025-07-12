@@ -33,23 +33,23 @@ typedef enum Logger_Level {
 
 typedef struct Logger Logger;
 
-typedef void logger_cb(void *context, Logger_Level level, const char *file, uint32_t line,
-                       const char *func, const char *message, void *userdata);
+typedef void logger_cb(void *_Nullable context, Logger_Level level, const char *_Nonnull file, uint32_t line,
+                       const char *_Nonnull func, const char *_Nonnull message, void *_Nullable userdata);
 
 /**
  * Creates a new logger with logging disabled (callback is NULL) by default.
  */
-Logger *logger_new(non_null() const Memory *mem);
+Logger *_Nullable logger_new(const Memory *_Nonnull mem);
 
 /**
  * Frees all resources associated with the logger.
  */
-void logger_kill(nullable() Logger *log);
+void logger_kill(Logger *_Nullable log);
 /**
  * Sets the logger callback. Disables logging if set to NULL.
  * The context parameter is passed to the callback as first argument.
  */
-void logger_callback_log(non_null() Logger *log, nullable() logger_cb *function, nullable() void *context, nullable() void *userdata);
+void logger_callback_log(Logger *_Nonnull log, logger_cb *_Nullable function, void *_Nullable context, void *_Nullable userdata);
 /** @brief Main write function. If logging is disabled, this does nothing.
  *
  * If the logger is NULL and `NDEBUG` is not defined, this writes to stderr.
@@ -60,7 +60,7 @@ void logger_callback_log(non_null() Logger *log, nullable() logger_cb *function,
  * If `NDEBUG` is defined, the NULL logger does nothing.
  */
 GNU_PRINTF(6, 7)
-void logger_write(nullable() const Logger *log, Logger_Level level, non_null() const char *file, uint32_t line, non_null() const char *func, non_null() const char *format, ...);
+void logger_write(const Logger *_Nullable log, Logger_Level level, const char *_Nonnull file, uint32_t line, const char *_Nonnull func, const char *_Nonnull format, ...);
 
 /* @brief Terminate the program with a signal. */
 void logger_abort(void);

@@ -30,7 +30,7 @@ struct Tox_Event_Conference_Title {
     uint32_t title_length;
 };
 
-static void tox_event_conference_title_set_conference_number(non_null() Tox_Event_Conference_Title *conference_title, uint32_t conference_number)
+static void tox_event_conference_title_set_conference_number(Tox_Event_Conference_Title *_Nonnull conference_title, uint32_t conference_number)
 {
     assert(conference_title != nullptr);
     conference_title->conference_number = conference_number;
@@ -41,7 +41,7 @@ uint32_t tox_event_conference_title_get_conference_number(const Tox_Event_Confer
     return conference_title->conference_number;
 }
 
-static void tox_event_conference_title_set_peer_number(non_null() Tox_Event_Conference_Title *conference_title, uint32_t peer_number)
+static void tox_event_conference_title_set_peer_number(Tox_Event_Conference_Title *_Nonnull conference_title, uint32_t peer_number)
 {
     assert(conference_title != nullptr);
     conference_title->peer_number = peer_number;
@@ -52,8 +52,8 @@ uint32_t tox_event_conference_title_get_peer_number(const Tox_Event_Conference_T
     return conference_title->peer_number;
 }
 
-static bool tox_event_conference_title_set_title(non_null() Tox_Event_Conference_Title *conference_title,
-        nullable() const uint8_t *title, uint32_t title_length)
+static bool tox_event_conference_title_set_title(Tox_Event_Conference_Title *_Nonnull conference_title,
+        const uint8_t *_Nullable title, uint32_t title_length)
 {
     assert(conference_title != nullptr);
     if (conference_title->title != nullptr) {
@@ -89,13 +89,13 @@ const uint8_t *tox_event_conference_title_get_title(const Tox_Event_Conference_T
     return conference_title->title;
 }
 
-static void tox_event_conference_title_construct(non_null() Tox_Event_Conference_Title *conference_title)
+static void tox_event_conference_title_construct(Tox_Event_Conference_Title *_Nonnull conference_title)
 {
     *conference_title = (Tox_Event_Conference_Title) {
         0
     };
 }
-static void tox_event_conference_title_destruct(non_null() Tox_Event_Conference_Title *conference_title, non_null() const Memory *mem)
+static void tox_event_conference_title_destruct(Tox_Event_Conference_Title *_Nonnull conference_title, const Memory *_Nonnull mem)
 {
     free(conference_title->title);
 }
@@ -109,7 +109,7 @@ bool tox_event_conference_title_pack(
            && bin_pack_bin(bp, event->title, event->title_length);
 }
 
-static bool tox_event_conference_title_unpack_into(non_null() Tox_Event_Conference_Title *event, non_null() Bin_Unpack *bu)
+static bool tox_event_conference_title_unpack_into(Tox_Event_Conference_Title *_Nonnull event, Bin_Unpack *_Nonnull bu)
 {
     assert(event != nullptr);
     if (!bin_unpack_array_fixed(bu, 3, nullptr)) {
@@ -153,7 +153,7 @@ void tox_event_conference_title_free(Tox_Event_Conference_Title *conference_titl
     mem_delete(mem, conference_title);
 }
 
-static Tox_Event_Conference_Title *tox_events_add_conference_title(non_null() Tox_Events *events, non_null() const Memory *mem)
+static Tox_Event_Conference_Title *tox_events_add_conference_title(Tox_Events *_Nonnull events, const Memory *_Nonnull mem)
 {
     Tox_Event_Conference_Title *const conference_title = tox_event_conference_title_new(mem);
 
@@ -186,7 +186,7 @@ bool tox_event_conference_title_unpack(
     return tox_event_conference_title_unpack_into(*event, bu);
 }
 
-static Tox_Event_Conference_Title *tox_event_conference_title_alloc(non_null() void *user_data)
+static Tox_Event_Conference_Title *tox_event_conference_title_alloc(void *_Nonnull user_data)
 {
     Tox_Events_State *state = tox_events_alloc(user_data);
     assert(state != nullptr);

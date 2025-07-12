@@ -28,7 +28,7 @@ struct Tox_Event_Group_Privacy_State {
     Tox_Group_Privacy_State privacy_state;
 };
 
-static void tox_event_group_privacy_state_set_group_number(non_null() Tox_Event_Group_Privacy_State *group_privacy_state, uint32_t group_number)
+static void tox_event_group_privacy_state_set_group_number(Tox_Event_Group_Privacy_State *_Nonnull group_privacy_state, uint32_t group_number)
 {
     assert(group_privacy_state != nullptr);
     group_privacy_state->group_number = group_number;
@@ -39,7 +39,7 @@ uint32_t tox_event_group_privacy_state_get_group_number(const Tox_Event_Group_Pr
     return group_privacy_state->group_number;
 }
 
-static void tox_event_group_privacy_state_set_privacy_state(non_null() Tox_Event_Group_Privacy_State *group_privacy_state, Tox_Group_Privacy_State privacy_state)
+static void tox_event_group_privacy_state_set_privacy_state(Tox_Event_Group_Privacy_State *_Nonnull group_privacy_state, Tox_Group_Privacy_State privacy_state)
 {
     assert(group_privacy_state != nullptr);
     group_privacy_state->privacy_state = privacy_state;
@@ -50,13 +50,13 @@ Tox_Group_Privacy_State tox_event_group_privacy_state_get_privacy_state(const To
     return group_privacy_state->privacy_state;
 }
 
-static void tox_event_group_privacy_state_construct(non_null() Tox_Event_Group_Privacy_State *group_privacy_state)
+static void tox_event_group_privacy_state_construct(Tox_Event_Group_Privacy_State *_Nonnull group_privacy_state)
 {
     *group_privacy_state = (Tox_Event_Group_Privacy_State) {
         0
     };
 }
-static void tox_event_group_privacy_state_destruct(non_null() Tox_Event_Group_Privacy_State *group_privacy_state, non_null() const Memory *mem)
+static void tox_event_group_privacy_state_destruct(Tox_Event_Group_Privacy_State *_Nonnull group_privacy_state, const Memory *_Nonnull mem)
 {
     return;
 }
@@ -69,7 +69,7 @@ bool tox_event_group_privacy_state_pack(
            && tox_group_privacy_state_pack(event->privacy_state, bp);
 }
 
-static bool tox_event_group_privacy_state_unpack_into(non_null() Tox_Event_Group_Privacy_State *event, non_null() Bin_Unpack *bu)
+static bool tox_event_group_privacy_state_unpack_into(Tox_Event_Group_Privacy_State *_Nonnull event, Bin_Unpack *_Nonnull bu)
 {
     assert(event != nullptr);
     if (!bin_unpack_array_fixed(bu, 2, nullptr)) {
@@ -112,7 +112,7 @@ void tox_event_group_privacy_state_free(Tox_Event_Group_Privacy_State *group_pri
     mem_delete(mem, group_privacy_state);
 }
 
-static Tox_Event_Group_Privacy_State *tox_events_add_group_privacy_state(non_null() Tox_Events *events, non_null() const Memory *mem)
+static Tox_Event_Group_Privacy_State *tox_events_add_group_privacy_state(Tox_Events *_Nonnull events, const Memory *_Nonnull mem)
 {
     Tox_Event_Group_Privacy_State *const group_privacy_state = tox_event_group_privacy_state_new(mem);
 
@@ -145,7 +145,7 @@ bool tox_event_group_privacy_state_unpack(
     return tox_event_group_privacy_state_unpack_into(*event, bu);
 }
 
-static Tox_Event_Group_Privacy_State *tox_event_group_privacy_state_alloc(non_null() void *user_data)
+static Tox_Event_Group_Privacy_State *tox_event_group_privacy_state_alloc(void *_Nonnull user_data)
 {
     Tox_Events_State *state = tox_events_alloc(user_data);
     assert(state != nullptr);

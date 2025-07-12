@@ -30,7 +30,7 @@ struct Tox_Event_Group_Custom_Packet {
     uint32_t data_length;
 };
 
-static void tox_event_group_custom_packet_set_group_number(non_null() Tox_Event_Group_Custom_Packet *group_custom_packet, uint32_t group_number)
+static void tox_event_group_custom_packet_set_group_number(Tox_Event_Group_Custom_Packet *_Nonnull group_custom_packet, uint32_t group_number)
 {
     assert(group_custom_packet != nullptr);
     group_custom_packet->group_number = group_number;
@@ -41,7 +41,7 @@ uint32_t tox_event_group_custom_packet_get_group_number(const Tox_Event_Group_Cu
     return group_custom_packet->group_number;
 }
 
-static void tox_event_group_custom_packet_set_peer_id(non_null() Tox_Event_Group_Custom_Packet *group_custom_packet, uint32_t peer_id)
+static void tox_event_group_custom_packet_set_peer_id(Tox_Event_Group_Custom_Packet *_Nonnull group_custom_packet, uint32_t peer_id)
 {
     assert(group_custom_packet != nullptr);
     group_custom_packet->peer_id = peer_id;
@@ -52,8 +52,8 @@ uint32_t tox_event_group_custom_packet_get_peer_id(const Tox_Event_Group_Custom_
     return group_custom_packet->peer_id;
 }
 
-static bool tox_event_group_custom_packet_set_data(non_null() Tox_Event_Group_Custom_Packet *group_custom_packet,
-        nullable() const uint8_t *data, uint32_t data_length)
+static bool tox_event_group_custom_packet_set_data(Tox_Event_Group_Custom_Packet *_Nonnull group_custom_packet,
+        const uint8_t *_Nullable data, uint32_t data_length)
 {
     assert(group_custom_packet != nullptr);
     if (group_custom_packet->data != nullptr) {
@@ -89,13 +89,13 @@ const uint8_t *tox_event_group_custom_packet_get_data(const Tox_Event_Group_Cust
     return group_custom_packet->data;
 }
 
-static void tox_event_group_custom_packet_construct(non_null() Tox_Event_Group_Custom_Packet *group_custom_packet)
+static void tox_event_group_custom_packet_construct(Tox_Event_Group_Custom_Packet *_Nonnull group_custom_packet)
 {
     *group_custom_packet = (Tox_Event_Group_Custom_Packet) {
         0
     };
 }
-static void tox_event_group_custom_packet_destruct(non_null() Tox_Event_Group_Custom_Packet *group_custom_packet, non_null() const Memory *mem)
+static void tox_event_group_custom_packet_destruct(Tox_Event_Group_Custom_Packet *_Nonnull group_custom_packet, const Memory *_Nonnull mem)
 {
     free(group_custom_packet->data);
 }
@@ -109,7 +109,7 @@ bool tox_event_group_custom_packet_pack(
            && bin_pack_bin(bp, event->data, event->data_length);
 }
 
-static bool tox_event_group_custom_packet_unpack_into(non_null() Tox_Event_Group_Custom_Packet *event, non_null() Bin_Unpack *bu)
+static bool tox_event_group_custom_packet_unpack_into(Tox_Event_Group_Custom_Packet *_Nonnull event, Bin_Unpack *_Nonnull bu)
 {
     assert(event != nullptr);
     if (!bin_unpack_array_fixed(bu, 3, nullptr)) {
@@ -153,7 +153,7 @@ void tox_event_group_custom_packet_free(Tox_Event_Group_Custom_Packet *group_cus
     mem_delete(mem, group_custom_packet);
 }
 
-static Tox_Event_Group_Custom_Packet *tox_events_add_group_custom_packet(non_null() Tox_Events *events, non_null() const Memory *mem)
+static Tox_Event_Group_Custom_Packet *tox_events_add_group_custom_packet(Tox_Events *_Nonnull events, const Memory *_Nonnull mem)
 {
     Tox_Event_Group_Custom_Packet *const group_custom_packet = tox_event_group_custom_packet_new(mem);
 
@@ -186,7 +186,7 @@ bool tox_event_group_custom_packet_unpack(
     return tox_event_group_custom_packet_unpack_into(*event, bu);
 }
 
-static Tox_Event_Group_Custom_Packet *tox_event_group_custom_packet_alloc(non_null() void *user_data)
+static Tox_Event_Group_Custom_Packet *tox_event_group_custom_packet_alloc(void *_Nonnull user_data)
 {
     Tox_Events_State *state = tox_events_alloc(user_data);
     assert(state != nullptr);

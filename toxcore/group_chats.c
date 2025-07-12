@@ -161,16 +161,16 @@ typedef enum Group_Sync_Flags {
     GF_STATE      = (1 << 2), // 4
 } Group_Sync_Flags;
 
-static bool self_gc_is_founder(non_null() const GC_Chat *chat);
-static bool group_number_valid(non_null() const GC_Session *c, int group_number);
-static int peer_update(non_null() const GC_Chat *chat, non_null() const GC_Peer *peer, uint32_t peer_number);
-static void group_delete(non_null() GC_Session *c, non_null() GC_Chat *chat);
-static void group_cleanup(non_null() const GC_Session *c, non_null() GC_Chat *chat);
-static bool group_exists(non_null() const GC_Session *c, non_null() const uint8_t *chat_id);
-static void add_tcp_relays_to_chat(non_null() const GC_Session *c, non_null() GC_Chat *chat);
-static void create_gc_session_keypair(non_null() const Logger *log, non_null() const Random *rng, non_null() uint8_t *public_key, non_null() uint8_t *secret_key);
-static size_t load_gc_peers(non_null() GC_Chat *chat, non_null() const GC_SavedPeerInfo *addrs, uint16_t num_addrs);
-static bool saved_peer_is_valid(non_null() const GC_SavedPeerInfo *saved_peer);
+static bool self_gc_is_founder(const GC_Chat *_Nonnull chat);
+static bool group_number_valid(const GC_Session *_Nonnull c, int group_number);
+static int peer_update(const GC_Chat *_Nonnull chat, const GC_Peer *_Nonnull peer, uint32_t peer_number);
+static void group_delete(GC_Session *_Nonnull c, GC_Chat *_Nonnull chat);
+static void group_cleanup(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat);
+static bool group_exists(const GC_Session *_Nonnull c, const uint8_t *_Nonnull chat_id);
+static void add_tcp_relays_to_chat(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat);
+static void create_gc_session_keypair(const Logger *_Nonnull log, const Random *_Nonnull rng, uint8_t *_Nonnull public_key, uint8_t *_Nonnull secret_key);
+static size_t load_gc_peers(GC_Chat *_Nonnull chat, const GC_SavedPeerInfo *_Nonnull addrs, uint16_t num_addrs);
+static bool saved_peer_is_valid(const GC_SavedPeerInfo *_Nonnull saved_peer);
 
 static const GC_Chat empty_gc_chat = {nullptr};
 
@@ -203,7 +203,7 @@ static GC_Peer_Id gc_unknown_peer_id(void)
     return gc_peer_id_from_int(0);
 }
 
-static void kill_group_friend_connection(non_null() const GC_Session *c, non_null() const GC_Chat *chat)
+static void kill_group_friend_connection(const GC_Session *_Nonnull c, const GC_Chat *_Nonnull chat)
 {
     if (chat->friend_connection_id != -1) {
         m_kill_group_connection(c->messenger, chat);
@@ -235,7 +235,7 @@ bool gc_peer_number_is_valid(const GC_Chat *chat, int peer_number)
     return peer_number >= 0 && peer_number < (int)chat->numpeers;
 }
 
-static GC_Peer *get_gc_peer(non_null() const GC_Chat *chat, int peer_number)
+static GC_Peer *get_gc_peer(const GC_Chat *_Nonnull chat, int peer_number)
 {
     if (!gc_peer_number_is_valid(chat, peer_number)) {
         return nullptr;
@@ -294,7 +294,7 @@ uint16_t gc_get_self_nick_size(const GC_Chat *chat)
  *
  * Returns false if `nick` is null or `length` is greater than MAX_GC_NICK_SIZE.
  */
-static bool self_gc_set_nick(non_null() const GC_Chat *chat, non_null() const uint8_t *nick, uint16_t length)
+static bool self_gc_set_nick(const GC_Chat *_Nonnull chat, const uint8_t *_Nonnull nick, uint16_t length)
 {
     if (nick == nullptr || length > MAX_GC_NICK_SIZE) {
         return false;
@@ -319,7 +319,7 @@ Group_Role gc_get_self_role(const GC_Chat *chat)
 }
 
 /** Sets self role. If role is invalid this function has no effect. */
-static void self_gc_set_role(non_null() const GC_Chat *chat, Group_Role role)
+static void self_gc_set_role(const GC_Chat *_Nonnull chat, Group_Role role)
 {
     if (role <= GR_OBSERVER) {
         GC_Peer *peer = get_gc_peer(chat, 0);
@@ -338,7 +338,7 @@ uint8_t gc_get_self_status(const GC_Chat *chat)
 }
 
 /** Sets self status. If status is invalid this function has no effect. */
-static void self_gc_set_status(non_null() const GC_Chat *chat, Group_Peer_Status status)
+static void self_gc_set_status(const GC_Chat *_Nonnull chat, Group_Peer_Status status)
 {
     if (status == GS_NONE || status == GS_AWAY || status == GS_BUSY) {
         GC_Peer *peer = get_gc_peer(chat, 0);
@@ -359,7 +359,7 @@ GC_Peer_Id gc_get_self_peer_id(const GC_Chat *chat)
 }
 
 /** Sets self confirmed status. */
-static void self_gc_set_confirmed(non_null() const GC_Chat *chat, bool confirmed)
+static void self_gc_set_confirmed(const GC_Chat *_Nonnull chat, bool confirmed)
 {
     GC_Connection *gconn = get_gc_connection(chat, 0);
     assert(gconn != nullptr);
@@ -368,7 +368,7 @@ static void self_gc_set_confirmed(non_null() const GC_Chat *chat, bool confirmed
 }
 
 /** Returns true if self has the founder role */
-static bool self_gc_is_founder(non_null() const GC_Chat *chat)
+static bool self_gc_is_founder(const GC_Chat *_Nonnull chat)
 {
     return gc_get_self_role(chat) == GR_FOUNDER;
 }
@@ -384,7 +384,7 @@ void gc_get_self_public_key(const GC_Chat *chat, uint8_t *public_key)
  *
  * If `ext_public_key` is null this function has no effect.
  */
-static void self_gc_set_ext_public_key(non_null() const GC_Chat *chat, non_null() const Extended_Public_Key *ext_public_key)
+static void self_gc_set_ext_public_key(const GC_Chat *_Nonnull chat, const Extended_Public_Key *_Nonnull ext_public_key)
 {
     if (ext_public_key != nullptr) {
         GC_Connection *gconn = get_gc_connection(chat, 0);
@@ -396,7 +396,7 @@ static void self_gc_set_ext_public_key(non_null() const GC_Chat *chat, non_null(
 /**
  * Return true if `peer` has permission to speak according to the `voice_state`.
  */
-static bool peer_has_voice(non_null() const GC_Peer *peer, Group_Voice_State voice_state)
+static bool peer_has_voice(const GC_Peer *_Nonnull peer, Group_Voice_State voice_state)
 {
     const Group_Role role = peer->role;
 
@@ -521,19 +521,19 @@ int unpack_gc_saved_peers(GC_Chat *chat, const uint8_t *data, uint16_t length)
 }
 
 /** Returns true if chat privacy state is set to public. */
-static bool is_public_chat(non_null() const GC_Chat *chat)
+static bool is_public_chat(const GC_Chat *_Nonnull chat)
 {
     return chat->shared_state.privacy_state == GI_PUBLIC;
 }
 
 /** Returns true if group is password protected */
-static bool chat_is_password_protected(non_null() const GC_Chat *chat)
+static bool chat_is_password_protected(const GC_Chat *_Nonnull chat)
 {
     return chat->shared_state.password_length > 0;
 }
 
 /** Returns true if `password` matches the current group password. */
-static bool validate_password(non_null() const GC_Chat *chat, non_null() const uint8_t *password, uint16_t length)
+static bool validate_password(const GC_Chat *_Nonnull chat, const uint8_t *_Nonnull password, uint16_t length)
 {
     if (length > MAX_GC_PASSWORD_SIZE) {
         return false;
@@ -550,7 +550,7 @@ static bool validate_password(non_null() const GC_Chat *chat, non_null() const u
  *
  * `id` must be at least ENC_PUBLIC_KEY_SIZE bytes in length.
  */
-static GC_Chat *get_chat_by_id(non_null() const GC_Session *c, non_null() const uint8_t *id)
+static GC_Chat *get_chat_by_id(const GC_Session *_Nonnull c, const uint8_t *_Nonnull id)
 {
     if (c == nullptr) {
         return nullptr;
@@ -585,7 +585,7 @@ uint32_t gc_get_pk_jenkins_hash(const uint8_t *public_key)
  *
  * Must be called every time a peer is confirmed or deleted.
  */
-static void set_gc_peerlist_checksum(non_null() GC_Chat *chat)
+static void set_gc_peerlist_checksum(GC_Chat *_Nonnull chat)
 {
     uint16_t sum = 0;
 
@@ -603,7 +603,7 @@ static void set_gc_peerlist_checksum(non_null() GC_Chat *chat)
 }
 
 /** Returns a checksum of the topic currently set in `topic_info`. */
-static uint16_t get_gc_topic_checksum(non_null() const GC_TopicInfo *topic_info)
+static uint16_t get_gc_topic_checksum(const GC_TopicInfo *_Nonnull topic_info)
 {
     return data_checksum(topic_info->topic, topic_info->length);
 }
@@ -636,7 +636,7 @@ int get_peer_number_of_enc_pk(const GC_Chat *chat, const uint8_t *public_enc_key
  * Returns the peer number if peer is in the peer list.
  * Returns -1 if peer is not in the peer list.
  */
-static int get_peer_number_of_sig_pk(non_null() const GC_Chat *chat, non_null() const uint8_t *public_sig_key)
+static int get_peer_number_of_sig_pk(const GC_Chat *_Nonnull chat, const uint8_t *_Nonnull public_sig_key)
 {
     for (uint32_t i = 0; i < chat->numpeers; ++i) {
         const GC_Connection *gconn = get_gc_connection(chat, i);
@@ -651,7 +651,7 @@ static int get_peer_number_of_sig_pk(non_null() const GC_Chat *chat, non_null() 
     return -1;
 }
 
-static bool gc_get_enc_pk_from_sig_pk(non_null() const GC_Chat *chat, non_null() uint8_t *public_key, non_null() const uint8_t *public_sig_key)
+static bool gc_get_enc_pk_from_sig_pk(const GC_Chat *_Nonnull chat, uint8_t *_Nonnull public_key, const uint8_t *_Nonnull public_sig_key)
 {
     for (uint32_t i = 0; i < chat->numpeers; ++i) {
         const GC_Connection *gconn = get_gc_connection(chat, i);
@@ -669,7 +669,7 @@ static bool gc_get_enc_pk_from_sig_pk(non_null() const GC_Chat *chat, non_null()
     return false;
 }
 
-static GC_Connection *random_gc_connection(non_null() const GC_Chat *chat)
+static GC_Connection *random_gc_connection(const GC_Chat *_Nonnull chat)
 {
     if (chat->numpeers <= 1) {
         return nullptr;
@@ -696,7 +696,7 @@ static GC_Connection *random_gc_connection(non_null() const GC_Chat *chat)
 /** @brief Returns the peer number associated with peer_id.
  * Returns -1 if peer_id is invalid.
  */
-static int get_peer_number_of_peer_id(non_null() const GC_Chat *chat, GC_Peer_Id peer_id)
+static int get_peer_number_of_peer_id(const GC_Chat *_Nonnull chat, GC_Peer_Id peer_id)
 {
     for (uint32_t i = 0; i < chat->numpeers; ++i) {
         if (chat->group[i].peer_id.value == peer_id.value) {
@@ -713,7 +713,7 @@ static int get_peer_number_of_peer_id(non_null() const GC_Chat *chat, GC_Peer_Id
  * These ID's are permanently assigned to a peer when they join the group and should be
  * considered arbitrary values.
  */
-static GC_Peer_Id get_new_peer_id(non_null() const GC_Chat *chat)
+static GC_Peer_Id get_new_peer_id(const GC_Chat *_Nonnull chat)
 {
     for (uint32_t i = 0; i < UINT32_MAX - 1; ++i) {
         const GC_Peer_Id peer_id = gc_peer_id_from_int(i);
@@ -729,7 +729,7 @@ static GC_Peer_Id get_new_peer_id(non_null() const GC_Chat *chat)
  *
  * Return true on success.
  */
-static bool set_gc_password_local(non_null() GC_Chat *chat, nullable() const uint8_t *passwd, uint16_t length)
+static bool set_gc_password_local(GC_Chat *_Nonnull chat, const uint8_t *_Nullable passwd, uint16_t length)
 {
     if (length > MAX_GC_PASSWORD_SIZE) {
         return false;
@@ -751,7 +751,7 @@ static bool set_gc_password_local(non_null() GC_Chat *chat, nullable() const uin
  *
  * This should always be called instead of setting the variables manually.
  */
-static void set_gc_shared_state_version(non_null() GC_Chat *chat, uint32_t version)
+static void set_gc_shared_state_version(GC_Chat *_Nonnull chat, uint32_t version)
 {
     chat->shared_state.version = version;
     chat->moderation.shared_state_version = version;
@@ -763,7 +763,7 @@ static void set_gc_shared_state_version(non_null() GC_Chat *chat, uint32_t versi
  *
  * Return true on success.
  */
-static bool expand_chat_id(non_null() Extended_Public_Key *dest, non_null() const uint8_t *chat_id)
+static bool expand_chat_id(Extended_Public_Key *_Nonnull dest, const uint8_t *_Nonnull chat_id)
 {
     assert(dest != nullptr);
 
@@ -774,7 +774,7 @@ static bool expand_chat_id(non_null() Extended_Public_Key *dest, non_null() cons
 }
 
 /** Copies peer connect info from `gconn` to `addr`. */
-static void copy_gc_saved_peer(non_null() const Random *rng, non_null() const GC_Connection *gconn, non_null() GC_SavedPeerInfo *addr)
+static void copy_gc_saved_peer(const Random *_Nonnull rng, const GC_Connection *_Nonnull gconn, GC_SavedPeerInfo *_Nonnull addr)
 {
     if (!gcc_copy_tcp_relay(rng, &addr->tcp_relay, gconn)) {
         addr->tcp_relay = (Node_format) {
@@ -787,7 +787,7 @@ static void copy_gc_saved_peer(non_null() const Random *rng, non_null() const GC
 }
 
 /** Return true if `saved_peer` has either a valid IP_Port or a valid TCP relay. */
-static bool saved_peer_is_valid(non_null() const GC_SavedPeerInfo *saved_peer)
+static bool saved_peer_is_valid(const GC_SavedPeerInfo *_Nonnull saved_peer)
 {
     return ipport_isset(&saved_peer->ip_port) || ipport_isset(&saved_peer->tcp_relay.ip_port);
 }
@@ -795,7 +795,7 @@ static bool saved_peer_is_valid(non_null() const GC_SavedPeerInfo *saved_peer)
 /** @brief Returns the index of the saved peers entry for `public_key`.
  * Returns -1 if key is not found.
  */
-static int saved_peer_index(non_null() const GC_Chat *chat, non_null() const uint8_t *public_key)
+static int saved_peer_index(const GC_Chat *_Nonnull chat, const uint8_t *_Nonnull public_key)
 {
     for (uint16_t i = 0; i < GC_MAX_SAVED_PEERS; ++i) {
         const GC_SavedPeerInfo *saved_peer = &chat->saved_peers[i];
@@ -809,7 +809,7 @@ static int saved_peer_index(non_null() const GC_Chat *chat, non_null() const uin
 }
 
 /** @brief Removes entry containing `public_key` from the saved peers list. */
-static void saved_peers_remove_entry(non_null() GC_Chat *chat, non_null() const uint8_t *public_key)
+static void saved_peers_remove_entry(GC_Chat *_Nonnull chat, const uint8_t *_Nonnull public_key)
 {
     const int idx = saved_peer_index(chat, public_key);
 
@@ -833,7 +833,7 @@ static void saved_peers_remove_entry(non_null() GC_Chat *chat, non_null() const 
  *
  * Returns -1 if there are no vacant indices.
  */
-static int saved_peers_get_new_index(non_null() const GC_Chat *chat, nullable() const uint8_t *public_key)
+static int saved_peers_get_new_index(const GC_Chat *_Nonnull chat, const uint8_t *_Nullable public_key)
 {
     if (public_key != nullptr) {
         const int idx = saved_peer_index(chat, public_key);
@@ -874,7 +874,7 @@ static int saved_peers_get_new_index(non_null() const GC_Chat *chat, nullable() 
  *
  * This function should be called every time a new peer joins the group.
  */
-static void add_gc_saved_peers(non_null() GC_Chat *chat, non_null() const GC_Connection *gconn)
+static void add_gc_saved_peers(GC_Chat *_Nonnull chat, const GC_Connection *_Nonnull gconn)
 {
     const int idx = saved_peers_get_new_index(chat, gconn->addr.public_key.enc);
 
@@ -891,7 +891,7 @@ static void add_gc_saved_peers(non_null() GC_Chat *chat, non_null() const GC_Con
  *
  * This function should be called after a confirmed peer exits the group.
  */
-static void refresh_gc_saved_peers(non_null() GC_Chat *chat)
+static void refresh_gc_saved_peers(GC_Chat *_Nonnull chat)
 {
     const int idx = saved_peers_get_new_index(chat, nullptr);
 
@@ -919,7 +919,7 @@ static void refresh_gc_saved_peers(non_null() GC_Chat *chat)
 }
 
 /** Returns the number of confirmed peers in peerlist. */
-static uint16_t get_gc_confirmed_numpeers(non_null() const GC_Chat *chat)
+static uint16_t get_gc_confirmed_numpeers(const GC_Chat *_Nonnull chat)
 {
     uint16_t count = 0;
 
@@ -936,15 +936,15 @@ static uint16_t get_gc_confirmed_numpeers(non_null() const GC_Chat *chat)
     return count;
 }
 
-static bool sign_gc_shared_state(non_null() GC_Chat *chat);
-static bool broadcast_gc_mod_list(non_null() const GC_Chat *chat);
-static bool broadcast_gc_shared_state(non_null() const GC_Chat *chat);
-static bool update_gc_sanctions_list(non_null() GC_Chat *chat, non_null() const uint8_t *public_sig_key);
-static bool update_gc_topic(non_null() GC_Chat *chat, non_null() const uint8_t *public_sig_key);
-static bool send_gc_set_observer(non_null() const GC_Chat *chat, non_null() const Extended_Public_Key *target_ext_pk, non_null() const uint8_t *sanction_data, uint16_t length, bool add_obs);
+static bool sign_gc_shared_state(GC_Chat *_Nonnull chat);
+static bool broadcast_gc_mod_list(const GC_Chat *_Nonnull chat);
+static bool broadcast_gc_shared_state(const GC_Chat *_Nonnull chat);
+static bool update_gc_sanctions_list(GC_Chat *_Nonnull chat, const uint8_t *_Nonnull public_sig_key);
+static bool update_gc_topic(GC_Chat *_Nonnull chat, const uint8_t *_Nonnull public_sig_key);
+static bool send_gc_set_observer(const GC_Chat *_Nonnull chat, const Extended_Public_Key *_Nonnull target_ext_pk, const uint8_t *_Nonnull sanction_data, uint16_t length, bool add_obs);
 
 /** Returns true if peer designated by `peer_number` is in the sanctions list as an observer. */
-static bool peer_is_observer(non_null() const GC_Chat *chat, uint32_t peer_number)
+static bool peer_is_observer(const GC_Chat *_Nonnull chat, uint32_t peer_number)
 {
     const GC_Connection *gconn = get_gc_connection(chat, peer_number);
 
@@ -956,7 +956,7 @@ static bool peer_is_observer(non_null() const GC_Chat *chat, uint32_t peer_numbe
 }
 
 /** Returns true if peer designated by `peer_number` is the group founder. */
-static bool peer_is_founder(non_null() const GC_Chat *chat, uint32_t peer_number)
+static bool peer_is_founder(const GC_Chat *_Nonnull chat, uint32_t peer_number)
 {
 
     const GC_Connection *gconn = get_gc_connection(chat, peer_number);
@@ -969,7 +969,7 @@ static bool peer_is_founder(non_null() const GC_Chat *chat, uint32_t peer_number
 }
 
 /** Returns true if peer designated by `peer_number` is in the moderator list or is the founder. */
-static bool peer_is_moderator(non_null() const GC_Chat *chat, uint32_t peer_number)
+static bool peer_is_moderator(const GC_Chat *_Nonnull chat, uint32_t peer_number)
 {
     const GC_Connection *gconn = get_gc_connection(chat, peer_number);
 
@@ -993,7 +993,7 @@ static bool peer_is_moderator(non_null() const GC_Chat *chat, uint32_t peer_numb
  * This should be called every time the moderator list or sanctions list changes,
  * and after a new peer is marked as confirmed.
  */
-static void update_gc_peer_roles(non_null() GC_Chat *chat)
+static void update_gc_peer_roles(GC_Chat *_Nonnull chat)
 {
     chat->roles_checksum = 0;
     bool conflicts = false;
@@ -1059,7 +1059,7 @@ static void update_gc_peer_roles(non_null() GC_Chat *chat)
  *
  * Returns false on failure.
  */
-static bool prune_gc_mod_list(non_null() GC_Chat *chat)
+static bool prune_gc_mod_list(GC_Chat *_Nonnull chat)
 {
     if (chat->moderation.num_mods == 0) {
         return true;
@@ -1090,7 +1090,7 @@ static bool prune_gc_mod_list(non_null() GC_Chat *chat)
            && update_gc_topic(chat, public_sig_key);
 }
 
-static bool prune_gc_sanctions_list_inner(non_null() GC_Chat *chat, non_null() const Mod_Sanction *sanction, non_null() const Extended_Public_Key *target_ext_pk)
+static bool prune_gc_sanctions_list_inner(GC_Chat *_Nonnull chat, const Mod_Sanction *_Nonnull sanction, const Extended_Public_Key *_Nonnull target_ext_pk)
 {
     if (!sanctions_list_remove_observer(&chat->moderation, sanction->target_public_enc_key, nullptr)) {
         LOGGER_WARNING(chat->log, "Failed to remove entry from observer list");
@@ -1118,7 +1118,7 @@ static bool prune_gc_sanctions_list_inner(non_null() GC_Chat *chat, non_null() c
  *
  * @retval false on failure or if no presently sanctioned peer is offline.
  */
-static bool prune_gc_sanctions_list(non_null() GC_Chat *chat)
+static bool prune_gc_sanctions_list(GC_Chat *_Nonnull chat)
 {
     if (chat->moderation.num_sanctions == 0) {
         return true;
@@ -1149,7 +1149,7 @@ static bool prune_gc_sanctions_list(non_null() GC_Chat *chat)
  * Return length of packed peer on success.
  * Return -1 on failure.
  */
-static int pack_gc_peer(non_null() uint8_t *data, uint16_t length, non_null() const GC_Peer *peer)
+static int pack_gc_peer(uint8_t *_Nonnull data, uint16_t length, const GC_Peer *_Nonnull peer)
 {
     if (PACKED_GC_PEER_SIZE > length) {
         return -1;
@@ -1172,7 +1172,7 @@ static int pack_gc_peer(non_null() uint8_t *data, uint16_t length, non_null() co
  * Returns the length of processed data on success.
  * Returns -1 on failure.
  */
-static int unpack_gc_peer(non_null() GC_Peer *peer, non_null() const uint8_t *data, uint16_t length)
+static int unpack_gc_peer(GC_Peer *_Nonnull peer, const uint8_t *_Nonnull data, uint16_t length)
 {
     if (PACKED_GC_PEER_SIZE > length) {
         return -1;
@@ -1197,7 +1197,7 @@ static int unpack_gc_peer(non_null() GC_Peer *peer, non_null() const uint8_t *da
  *
  * Returns packed data length.
  */
-static uint16_t pack_gc_shared_state(non_null() uint8_t *data, uint16_t length, non_null() const GC_SharedState *shared_state)
+static uint16_t pack_gc_shared_state(uint8_t *_Nonnull data, uint16_t length, const GC_SharedState *_Nonnull shared_state)
 {
     if (length < GC_PACKED_SHARED_STATE_SIZE) {
         return 0;
@@ -1244,7 +1244,7 @@ static uint16_t pack_gc_shared_state(non_null() uint8_t *data, uint16_t length, 
  *
  * Returns the length of processed data.
  */
-static uint16_t unpack_gc_shared_state(non_null() GC_SharedState *shared_state, non_null() const uint8_t *data, uint16_t length)
+static uint16_t unpack_gc_shared_state(GC_SharedState *_Nonnull shared_state, const uint8_t *_Nonnull data, uint16_t length)
 {
     if (length < GC_PACKED_SHARED_STATE_SIZE) {
         return 0;
@@ -1297,7 +1297,7 @@ static uint16_t unpack_gc_shared_state(non_null() GC_SharedState *shared_state, 
  *
  * Returns packed data length.
  */
-static uint16_t pack_gc_topic_info(non_null() uint8_t *data, uint16_t length, non_null() const GC_TopicInfo *topic_info)
+static uint16_t pack_gc_topic_info(uint8_t *_Nonnull data, uint16_t length, const GC_TopicInfo *_Nonnull topic_info)
 {
     if (length < topic_info->length + GC_MIN_PACKED_TOPIC_INFO_SIZE) {
         return 0;
@@ -1324,7 +1324,7 @@ static uint16_t pack_gc_topic_info(non_null() uint8_t *data, uint16_t length, no
  * Returns -1 on failure.
  * Returns the length of the processed data on success.
  */
-static int unpack_gc_topic_info(non_null() GC_TopicInfo *topic_info, non_null() const uint8_t *data, uint16_t length)
+static int unpack_gc_topic_info(GC_TopicInfo *_Nonnull topic_info, const uint8_t *_Nonnull data, uint16_t length)
 {
     if (length < sizeof(uint16_t) + sizeof(uint16_t) + sizeof(uint32_t)) {
         return -1;
@@ -1365,7 +1365,7 @@ static int unpack_gc_topic_info(non_null() GC_TopicInfo *topic_info, non_null() 
  * Returns packet length on success.
  * Returns -1 on failure.
  */
-static int make_gc_shared_state_packet(non_null() const GC_Chat *chat, non_null() uint8_t *data, uint16_t length)
+static int make_gc_shared_state_packet(const GC_Chat *_Nonnull chat, uint8_t *_Nonnull data, uint16_t length)
 {
     if (length < GC_SHARED_STATE_ENC_PACKET_SIZE) {
         return -1;
@@ -1389,7 +1389,7 @@ static int make_gc_shared_state_packet(non_null() const GC_Chat *chat, non_null(
  *
  * Returns true on success and increments the shared state version.
  */
-static bool sign_gc_shared_state(non_null() GC_Chat *chat)
+static bool sign_gc_shared_state(GC_Chat *_Nonnull chat)
 {
     if (!self_gc_is_founder(chat)) {
         LOGGER_ERROR(chat->log, "Failed to sign shared state (invalid permission)");
@@ -1435,8 +1435,8 @@ static bool sign_gc_shared_state(non_null() GC_Chat *chat)
  * Return -2 on decryption failure.
  * Return -3 if plaintext payload length is invalid.
  */
-static int group_packet_unwrap(non_null() const Logger *log, non_null() const Memory *mem, non_null() const GC_Connection *gconn, non_null() uint8_t *data, nullable() uint64_t *message_id,
-                               non_null() uint8_t *packet_type, non_null() const uint8_t *packet, uint16_t length)
+static int group_packet_unwrap(const Logger *_Nonnull log, const Memory *_Nonnull mem, const GC_Connection *_Nonnull gconn, uint8_t *_Nonnull data, uint64_t *_Nullable message_id,
+                               uint8_t *_Nonnull packet_type, const uint8_t *_Nonnull packet, uint16_t length)
 {
     assert(data != nullptr);
     assert(packet != nullptr);
@@ -1573,7 +1573,7 @@ int group_packet_wrap(
  *
  * Returns true on success.
  */
-static bool send_lossy_group_packet(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn, non_null() const uint8_t *data, uint16_t length, uint8_t packet_type)
+static bool send_lossy_group_packet(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn, const uint8_t *_Nonnull data, uint16_t length, uint8_t packet_type)
 {
     assert(length <= MAX_GC_CUSTOM_LOSSY_PACKET_SIZE);
 
@@ -1613,7 +1613,7 @@ static bool send_lossy_group_packet(non_null() const GC_Chat *chat, non_null() G
  *
  * Returns true on success.
  */
-static bool send_lossless_group_packet(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn, nullable() const uint8_t *data, uint16_t length,
+static bool send_lossless_group_packet(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn, const uint8_t *_Nullable data, uint16_t length,
                                        uint8_t packet_type)
 {
     assert(length <= MAX_GC_PACKET_SIZE);
@@ -1632,7 +1632,7 @@ static bool send_lossless_group_packet(non_null() const GC_Chat *chat, non_null(
  *
  * Returns true on success or if sync request timeout has not expired.
  */
-static bool send_gc_sync_request(non_null() GC_Chat *chat, non_null() GC_Connection *gconn, uint16_t sync_flags)
+static bool send_gc_sync_request(GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn, uint16_t sync_flags)
 {
     if (!mono_time_is_timeout(chat->mono_time, chat->last_sync_request, GC_SYNC_REQUEST_LIMIT)) {
         return true;
@@ -1660,14 +1660,14 @@ static bool send_gc_sync_request(non_null() GC_Chat *chat, non_null() GC_Connect
  *
  * Return true on success.
  */
-static bool send_gc_sync_response(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn, nullable() const uint8_t *data, uint16_t length)
+static bool send_gc_sync_response(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn, const uint8_t *_Nullable data, uint16_t length)
 {
     return send_lossless_group_packet(chat, gconn, data, length, GP_SYNC_RESPONSE);
 }
 
-static bool send_gc_peer_exchange(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn);
-static bool send_gc_handshake_packet(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn, uint8_t handshake_type, uint8_t request_type, uint8_t join_type);
-static bool send_gc_oob_handshake_request(non_null() const GC_Chat *chat, non_null() const GC_Connection *gconn);
+static bool send_gc_peer_exchange(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn);
+static bool send_gc_handshake_packet(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn, uint8_t handshake_type, uint8_t request_type, uint8_t join_type);
+static bool send_gc_oob_handshake_request(const GC_Chat *_Nonnull chat, const GC_Connection *_Nonnull gconn);
 
 /** @brief Unpacks a sync announce.
  *
@@ -1676,7 +1676,7 @@ static bool send_gc_oob_handshake_request(non_null() const GC_Chat *chat, non_nu
  *
  * Return true on success (whether or not the peer was added).
  */
-static bool unpack_gc_sync_announce(non_null() GC_Chat *chat, non_null() const uint8_t *data, const uint16_t length)
+static bool unpack_gc_sync_announce(GC_Chat *_Nonnull chat, const uint8_t *_Nonnull data, const uint16_t length)
 {
     GC_Announce announce = {0};
 
@@ -1756,8 +1756,8 @@ static bool unpack_gc_sync_announce(non_null() GC_Chat *chat, non_null() const u
  * Return -1 if the group is full or the peer failed to unpack.
  * Return -2 if `peer_number` does not designate a valid peer.
  */
-static int handle_gc_sync_response(non_null() const GC_Session *c, non_null() GC_Chat *chat, uint32_t peer_number, nullable() const uint8_t *data,
-                                   uint16_t length, nullable() void *userdata)
+static int handle_gc_sync_response(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat, uint32_t peer_number, const uint8_t *_Nullable data,
+                                   uint16_t length, void *_Nullable userdata)
 {
     if (chat->connection_state == CS_CONNECTED && get_gc_confirmed_numpeers(chat) >= chat->shared_state.maxpeers
             && !peer_is_founder(chat, peer_number)) {
@@ -1790,18 +1790,18 @@ static int handle_gc_sync_response(non_null() const GC_Session *c, non_null() GC
     return 0;
 }
 
-static int get_gc_peer_public_key(non_null() const GC_Chat *chat, uint32_t peer_number, non_null() uint8_t *public_key);
-static bool send_peer_shared_state(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn);
-static bool send_peer_mod_list(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn);
-static bool send_peer_sanctions_list(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn);
-static bool send_peer_topic(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn);
+static int get_gc_peer_public_key(const GC_Chat *_Nonnull chat, uint32_t peer_number, uint8_t *_Nonnull public_key);
+static bool send_peer_shared_state(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn);
+static bool send_peer_mod_list(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn);
+static bool send_peer_sanctions_list(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn);
+static bool send_peer_topic(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn);
 
 /** @brief Creates a sync announce for peer designated by `gconn` and puts it in `announce`, which
  * must be zeroed by the caller.
  *
  * Returns true if announce was successfully created.
  */
-static bool create_sync_announce(non_null() const GC_Chat *chat, non_null() const GC_Connection *gconn, uint32_t peer_number, non_null() GC_Announce *announce)
+static bool create_sync_announce(const GC_Chat *_Nonnull chat, const GC_Connection *_Nonnull gconn, uint32_t peer_number, GC_Announce *_Nonnull announce)
 {
     if (chat == nullptr || gconn == nullptr) {
         return false;
@@ -1823,7 +1823,7 @@ static bool create_sync_announce(non_null() const GC_Chat *chat, non_null() cons
     return true;
 }
 
-static bool sync_response_send_peers(non_null() GC_Chat *chat, non_null() GC_Connection *gconn, uint32_t peer_number, bool first_sync)
+static bool sync_response_send_peers(GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn, uint32_t peer_number, bool first_sync)
 {
     // Always respond to a peer's first sync request
     if (!first_sync && !mono_time_is_timeout(chat->mono_time,
@@ -1891,7 +1891,7 @@ static bool sync_response_send_peers(non_null() GC_Chat *chat, non_null() GC_Con
  *
  * Return true on success.
  */
-static bool sync_response_send_state(non_null() GC_Chat *chat, non_null() GC_Connection *gconn, uint32_t peer_number, uint16_t sync_flags)
+static bool sync_response_send_state(GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn, uint32_t peer_number, uint16_t sync_flags)
 {
     const bool first_sync = gconn->last_sync_response == 0;
 
@@ -1948,7 +1948,7 @@ static bool sync_response_send_state(non_null() GC_Chat *chat, non_null() GC_Con
  * Return -3 if we fail to send a response packet.
  * Return -4 if `peer_number` does not designate a valid peer.
  */
-static int handle_gc_sync_request(non_null() GC_Chat *chat, uint32_t peer_number, non_null() const uint8_t *data, uint16_t length)
+static int handle_gc_sync_request(GC_Chat *_Nonnull chat, uint32_t peer_number, const uint8_t *_Nonnull data, uint16_t length)
 {
     GC_Connection *gconn = get_gc_connection(chat, peer_number);
 
@@ -2000,14 +2000,14 @@ static int handle_gc_sync_request(non_null() GC_Chat *chat, uint32_t peer_number
     return 0;
 }
 
-static void copy_self(non_null() const GC_Chat *chat, non_null() GC_Peer *peer);
-static bool send_gc_peer_info_request(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn);
+static void copy_self(const GC_Chat *_Nonnull chat, GC_Peer *_Nonnull peer);
+static bool send_gc_peer_info_request(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn);
 
 /** @brief Shares our TCP relays with peer and adds shared relays to our connection with them.
  *
  * Returns true on success or if we're not connected to any TCP relays.
  */
-static bool send_gc_tcp_relays(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn)
+static bool send_gc_tcp_relays(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn)
 {
 
     Node_format tcp_relays[GCC_MAX_TCP_SHARED_RELAYS];
@@ -2048,7 +2048,7 @@ static bool send_gc_tcp_relays(non_null() const GC_Chat *chat, non_null() GC_Con
  * Return -1 if packet has invalid size.
  * Return -2 if packet contains invalid data.
  */
-static int handle_gc_tcp_relays(non_null() GC_Chat *chat, non_null() GC_Connection *gconn, non_null() const uint8_t *data, uint16_t length)
+static int handle_gc_tcp_relays(GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn, const uint8_t *_Nonnull data, uint16_t length)
 {
     if (length == 0) {
         return -1;
@@ -2084,7 +2084,7 @@ static int handle_gc_tcp_relays(non_null() GC_Chat *chat, non_null() GC_Connecti
  *
  * Return true on success.
  */
-static bool send_gc_invite_request(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn)
+static bool send_gc_invite_request(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn)
 {
     if (!chat_is_password_protected(chat)) {
         return send_lossless_group_packet(chat, gconn, nullptr, 0, GP_INVITE_REQUEST);
@@ -2101,7 +2101,7 @@ static bool send_gc_invite_request(non_null() const GC_Chat *chat, non_null() GC
     return send_lossless_group_packet(chat, gconn, data, length, GP_INVITE_REQUEST);
 }
 
-static bool send_gc_invite_response(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn)
+static bool send_gc_invite_response(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn)
 {
     return send_lossless_group_packet(chat, gconn, nullptr, 0, GP_INVITE_RESPONSE);
 }
@@ -2111,7 +2111,7 @@ static bool send_gc_invite_response(non_null() const GC_Chat *chat, non_null() G
  * Return 0 if packet is correctly handled.
  * Return -1 if we fail to send a sync request.
  */
-static int handle_gc_invite_response(non_null() GC_Chat *chat, non_null() GC_Connection *gconn)
+static int handle_gc_invite_response(GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn)
 {
     const uint16_t flags = GF_PEERS | GF_TOPIC | GF_STATE;
 
@@ -2128,8 +2128,8 @@ static int handle_gc_invite_response(non_null() GC_Chat *chat, non_null() GC_Con
  * Return 0 if packet is handled correctly.
  * Return -1 if packet has invalid size.
  */
-static int handle_gc_invite_response_reject(non_null() const GC_Session *c, non_null() GC_Chat *chat, non_null() const uint8_t *data, uint16_t length,
-        nullable() void *userdata)
+static int handle_gc_invite_response_reject(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat, const uint8_t *_Nonnull data, uint16_t length,
+        void *_Nullable userdata)
 {
     if (length < sizeof(uint8_t)) {
         return -1;
@@ -2162,7 +2162,7 @@ static int handle_gc_invite_response_reject(non_null() const GC_Session *c, non_
  *
  * Return true on success.
  */
-static bool send_gc_invite_response_reject(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn, uint8_t type)
+static bool send_gc_invite_response_reject(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn, uint8_t type)
 {
     if (type >= GJ_INVALID) {
         type = GJ_INVITE_FAILED;
@@ -2184,7 +2184,7 @@ static bool send_gc_invite_response_reject(non_null() const GC_Chat *chat, non_n
  * Return -3 if we fail to send an invite response.
  * Return -4 if peer_number does not designate a valid peer.
  */
-static int handle_gc_invite_request(non_null() GC_Chat *chat, uint32_t peer_number, nullable() const uint8_t *data, uint16_t length)
+static int handle_gc_invite_request(GC_Chat *_Nonnull chat, uint32_t peer_number, const uint8_t *_Nullable data, uint16_t length)
 {
     if (chat->shared_state.version == 0) {  // we aren't synced yet; ignore request
         return 0;
@@ -2241,7 +2241,7 @@ FAILED_INVITE:
  * Return true if packet is successfully sent to at least one peer or the
  * group is empty.
  */
-static bool send_gc_lossless_packet_all_peers(non_null() const GC_Chat *chat, non_null() const uint8_t *data, uint16_t length, uint8_t type)
+static bool send_gc_lossless_packet_all_peers(const GC_Chat *_Nonnull chat, const uint8_t *_Nonnull data, uint16_t length, uint8_t type)
 {
     uint32_t sent = 0;
     uint32_t confirmed_peers = 0;
@@ -2270,7 +2270,7 @@ static bool send_gc_lossless_packet_all_peers(non_null() const GC_Chat *chat, no
  * Return true if packet is successfully sent to at least one peer or the
  * group is empty.
  */
-static bool send_gc_lossy_packet_all_peers(non_null() const GC_Chat *chat, non_null() const uint8_t *data, uint16_t length, uint8_t type)
+static bool send_gc_lossy_packet_all_peers(const GC_Chat *_Nonnull chat, const uint8_t *_Nonnull data, uint16_t length, uint8_t type)
 {
     uint32_t sent = 0;
     uint32_t confirmed_peers = 0;
@@ -2298,7 +2298,7 @@ static bool send_gc_lossy_packet_all_peers(non_null() const GC_Chat *chat, non_n
  *
  * Returns length of packet including header.
  */
-static uint16_t make_gc_broadcast_header(nullable() const uint8_t *data, uint16_t length, non_null() uint8_t *packet, uint8_t bc_type)
+static uint16_t make_gc_broadcast_header(const uint8_t *_Nullable data, uint16_t length, uint8_t *_Nonnull packet, uint8_t bc_type)
 {
     packet[0] = bc_type;
     const uint16_t header_len = sizeof(uint8_t);
@@ -2314,7 +2314,7 @@ static uint16_t make_gc_broadcast_header(nullable() const uint8_t *data, uint16_
  *
  * Returns true on success.
  */
-static bool send_gc_broadcast_message(non_null() const GC_Chat *chat, nullable() const uint8_t *data, uint16_t length, uint8_t bc_type)
+static bool send_gc_broadcast_message(const GC_Chat *_Nonnull chat, const uint8_t *_Nullable data, uint16_t length, uint8_t bc_type)
 {
     if (length + GC_BROADCAST_ENC_HEADER_SIZE > MAX_GC_PACKET_SIZE) {
         LOGGER_ERROR(chat->log, "Failed to broadcast message: invalid length %u", length);
@@ -2336,12 +2336,12 @@ static bool send_gc_broadcast_message(non_null() const GC_Chat *chat, nullable()
     return ret;
 }
 
-static bool group_topic_lock_enabled(non_null() const GC_Chat *chat);
+static bool group_topic_lock_enabled(const GC_Chat *_Nonnull chat);
 
 /** @brief Compares the supplied values with our own state and returns the appropriate
  * sync flags for a sync request.
  */
-static uint16_t get_sync_flags(non_null() const GC_Chat *chat, uint16_t peers_checksum, uint16_t peer_count, uint32_t sstate_version, uint32_t screds_version, uint16_t roles_checksum,
+static uint16_t get_sync_flags(const GC_Chat *_Nonnull chat, uint16_t peers_checksum, uint16_t peer_count, uint32_t sstate_version, uint32_t screds_version, uint16_t roles_checksum,
                                uint32_t topic_version, uint16_t topic_checksum)
 {
     uint16_t sync_flags = 0;
@@ -2380,7 +2380,7 @@ static uint16_t get_sync_flags(non_null() const GC_Chat *chat, uint16_t peers_ch
  *
  * Returns true if a sync request packet is successfully sent.
  */
-static bool do_gc_peer_state_sync(non_null() GC_Chat *chat, non_null() GC_Connection *gconn, non_null() const uint8_t *sync_data, const uint16_t length)
+static bool do_gc_peer_state_sync(GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn, const uint8_t *_Nonnull sync_data, const uint16_t length)
 {
     if (length < GC_PING_PACKET_MIN_DATA_SIZE) {
         return false;
@@ -2440,7 +2440,7 @@ static bool do_gc_peer_state_sync(non_null() GC_Chat *chat, non_null() GC_Connec
  * Return 0 if packet is handled correctly.
  * Return -1 if packet has invalid size or peer is not confirmed.
  */
-static int handle_gc_ping(non_null() GC_Chat *chat, non_null() GC_Connection *gconn, non_null() const uint8_t *data, uint16_t length)
+static int handle_gc_ping(GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn, const uint8_t *_Nonnull data, uint16_t length)
 {
     if (length < GC_PING_PACKET_MIN_DATA_SIZE) {
         return -1;
@@ -2491,8 +2491,8 @@ int gc_set_self_status(const Messenger *m, int group_number, Group_Peer_Status s
  * Return 0 if packet is handled correctly.
  * Return -1 if packet has invalid length.
  */
-static int handle_gc_status(non_null() const GC_Session *c, non_null() const GC_Chat *chat, non_null() GC_Peer *peer, non_null() const uint8_t *data,
-                            uint16_t length, nullable() void *userdata)
+static int handle_gc_status(const GC_Session *_Nonnull c, const GC_Chat *_Nonnull chat, GC_Peer *_Nonnull peer, const uint8_t *_Nonnull data,
+                            uint16_t length, void *_Nullable userdata)
 {
     if (length < sizeof(uint8_t)) {
         return -1;
@@ -2555,7 +2555,7 @@ void gc_get_chat_id(const GC_Chat *chat, uint8_t *dest)
  *
  * Returns true on success.
  */
-static bool send_self_to_peer(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn)
+static bool send_self_to_peer(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn)
 {
     GC_Peer *self = (GC_Peer *)mem_alloc(chat->mem, sizeof(GC_Peer));
 
@@ -2608,7 +2608,7 @@ static bool send_self_to_peer(non_null() const GC_Chat *chat, non_null() GC_Conn
  * Return -2 if response fails.
  * Return -3 if `peer_number` does not designate a valid peer.
  */
-static int handle_gc_peer_info_request(non_null() const GC_Chat *chat, uint32_t peer_number)
+static int handle_gc_peer_info_request(const GC_Chat *_Nonnull chat, uint32_t peer_number)
 {
     GC_Connection *gconn = get_gc_connection(chat, peer_number);
 
@@ -2632,7 +2632,7 @@ static int handle_gc_peer_info_request(non_null() const GC_Chat *chat, uint32_t 
  *
  * Return true on success.
  */
-static bool send_gc_peer_info_request(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn)
+static bool send_gc_peer_info_request(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn)
 {
     return send_lossless_group_packet(chat, gconn, nullptr, 0, GP_PEER_INFO_REQUEST);
 }
@@ -2662,8 +2662,8 @@ static bool send_gc_peer_exchange(const GC_Chat *chat, GC_Connection *gconn)
  * Return -7 if peer's role cannot be validated.
  * Return -8 if memory allocation fails.
  */
-static int handle_gc_peer_info_response(non_null() const GC_Session *c, non_null() GC_Chat *chat, uint32_t peer_number,
-                                        non_null() const uint8_t *data, uint16_t length, nullable() void *userdata)
+static int handle_gc_peer_info_response(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat, uint32_t peer_number,
+                                        const uint8_t *_Nonnull data, uint16_t length, void *_Nullable userdata)
 {
     if (length < PACKED_GC_PEER_SIZE) {
         return -1;
@@ -2744,7 +2744,7 @@ static int handle_gc_peer_info_response(non_null() const GC_Session *c, non_null
  *
  * Returns true on success.
  */
-static bool send_peer_shared_state(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn)
+static bool send_peer_shared_state(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn)
 {
     if (chat->shared_state.version == 0) {
         return false;
@@ -2764,7 +2764,7 @@ static bool send_peer_shared_state(non_null() const GC_Chat *chat, non_null() GC
  *
  * Returns true on success.
  */
-static bool broadcast_gc_shared_state(non_null() const GC_Chat *chat)
+static bool broadcast_gc_shared_state(const GC_Chat *_Nonnull chat)
 {
     uint8_t packet[GC_SHARED_STATE_ENC_PACKET_SIZE];
     const int packet_len = make_gc_shared_state_packet(chat, packet, sizeof(packet));
@@ -2781,7 +2781,7 @@ static bool broadcast_gc_shared_state(non_null() const GC_Chat *chat)
  * If the privacy state has been set to private, we kill our group's connection to the DHT.
  * Otherwise, we create a new connection with the DHT and flag an announcement.
  */
-static void do_privacy_state_change(non_null() const GC_Session *c, non_null() GC_Chat *chat, nullable() void *userdata)
+static void do_privacy_state_change(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat, void *_Nullable userdata)
 {
     if (is_public_chat(chat)) {
         if (!m_create_group_connection(c->messenger, chat)) {
@@ -2808,8 +2808,8 @@ static void do_privacy_state_change(non_null() const GC_Session *c, non_null() G
  *
  * The initial retrieval of the shared state on group join will be ignored by this function.
  */
-static void do_gc_shared_state_changes(non_null() const GC_Session *c, non_null() GC_Chat *chat, non_null() const GC_SharedState *old_shared_state,
-                                       nullable() void *userdata)
+static void do_gc_shared_state_changes(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat, const GC_SharedState *_Nonnull old_shared_state,
+                                       void *_Nullable userdata)
 {
     /* Max peers changed */
     if (chat->shared_state.maxpeers != old_shared_state->maxpeers && c->peer_limit != nullptr) {
@@ -2847,7 +2847,7 @@ static void do_gc_shared_state_changes(non_null() const GC_Session *c, non_null(
  *
  * Return true on success.
  */
-static bool send_gc_random_sync_request(non_null() GC_Chat *chat, uint16_t sync_flags)
+static bool send_gc_random_sync_request(GC_Chat *_Nonnull chat, uint16_t sync_flags)
 {
     GC_Connection *rand_gconn = random_gc_connection(chat);
 
@@ -2859,7 +2859,7 @@ static bool send_gc_random_sync_request(non_null() GC_Chat *chat, uint16_t sync_
 }
 
 /** @brief Returns true if all shared state values are legal. */
-static bool validate_gc_shared_state(non_null() const GC_SharedState *state)
+static bool validate_gc_shared_state(const GC_SharedState *_Nonnull state)
 {
     return state->maxpeers > 0
            && state->password_length <= MAX_GC_PASSWORD_SIZE
@@ -2874,7 +2874,7 @@ static bool validate_gc_shared_state(non_null() const GC_SharedState *state)
  * Return 0 if error is currectly handled.
  * Return -1 on failure.
  */
-static int handle_gc_shared_state_error(non_null() GC_Chat *chat, non_null() GC_Connection *gconn)
+static int handle_gc_shared_state_error(GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn)
 {
     gcc_mark_for_deletion(gconn, chat->tcp_conn, GC_EXIT_TYPE_SYNC_ERR, nullptr, 0);
 
@@ -2899,8 +2899,8 @@ static int handle_gc_shared_state_error(non_null() GC_Chat *chat, non_null() GC_
  * Return 0 if packet is successfully handled.
  * Return -1 if packet is invalid and this is not successfully handled.
  */
-static int handle_gc_shared_state(non_null() const GC_Session *c, non_null() GC_Chat *chat, non_null() GC_Connection *gconn, non_null() const uint8_t *data,
-                                  uint16_t length, nullable() void *userdata)
+static int handle_gc_shared_state(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn, const uint8_t *_Nonnull data,
+                                  uint16_t length, void *_Nullable userdata)
 {
     if (length < GC_SHARED_STATE_ENC_PACKET_SIZE) {
         return handle_gc_shared_state_error(chat, gconn);
@@ -2961,7 +2961,7 @@ static int handle_gc_shared_state(non_null() const GC_Session *c, non_null() GC_
  * Return 0 if data is valid.
  * Return -1 if data is invalid.
  */
-static int validate_unpack_mod_list(non_null() GC_Chat *chat, non_null() const uint8_t *data, uint16_t length, uint16_t num_mods)
+static int validate_unpack_mod_list(GC_Chat *_Nonnull chat, const uint8_t *_Nonnull data, uint16_t length, uint16_t num_mods)
 {
     if (num_mods > MOD_MAX_NUM_MODERATORS) {
         return -1;
@@ -2996,7 +2996,7 @@ static int validate_unpack_mod_list(non_null() GC_Chat *chat, non_null() const u
  * Return -1 if packet has invalid size.
  * Return -2 if packet contained invalid data or validation failed.
  */
-static int handle_gc_mod_list(non_null() const GC_Session *c, non_null() GC_Chat *chat, non_null() const uint8_t *data, uint16_t length, nullable() void *userdata)
+static int handle_gc_mod_list(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat, const uint8_t *_Nonnull data, uint16_t length, void *_Nullable userdata)
 {
     if (length < sizeof(uint16_t)) {
         return -1;
@@ -3047,7 +3047,7 @@ static int handle_gc_mod_list(non_null() const GC_Session *c, non_null() GC_Chat
  * Return 0 on success.
  * Return -1 on failure.
  */
-static int handle_gc_sanctions_list_error(non_null() GC_Chat *chat)
+static int handle_gc_sanctions_list_error(GC_Chat *_Nonnull chat)
 {
     if (chat->moderation.sanctions_creds.version > 0) {
         return 0;
@@ -3075,8 +3075,8 @@ static int handle_gc_sanctions_list_error(non_null() GC_Chat *chat)
  * Return -1 if we failed to gracefully handle a sanctions list error.
  * Return -2 if packet has invalid size.
  */
-static int handle_gc_sanctions_list(non_null() const GC_Session *c, non_null() GC_Chat *chat, non_null() const uint8_t *data, uint16_t length,
-                                    nullable() void *userdata)
+static int handle_gc_sanctions_list(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat, const uint8_t *_Nonnull data, uint16_t length,
+                                    void *_Nullable userdata)
 {
     if (length < sizeof(uint16_t)) {
         return -2;
@@ -3147,7 +3147,7 @@ static int handle_gc_sanctions_list(non_null() const GC_Session *c, non_null() G
  * Returns length of packet data on success.
  * Returns -1 on failure.
  */
-static int make_gc_mod_list_packet(non_null() const GC_Chat *chat, non_null() uint8_t *data, uint32_t maxlen, uint16_t mod_list_size)
+static int make_gc_mod_list_packet(const GC_Chat *_Nonnull chat, uint8_t *_Nonnull data, uint32_t maxlen, uint16_t mod_list_size)
 {
     if (maxlen < sizeof(uint16_t) + mod_list_size) {
         return -1;
@@ -3176,7 +3176,7 @@ static int make_gc_mod_list_packet(non_null() const GC_Chat *chat, non_null() ui
  *
  * Return true on success.
  */
-static bool send_peer_mod_list(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn)
+static bool send_peer_mod_list(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn)
 {
     const uint16_t mod_list_size = chat->moderation.num_mods * MOD_LIST_ENTRY_SIZE;
     const uint16_t length = sizeof(uint16_t) + mod_list_size;
@@ -3205,7 +3205,7 @@ static bool send_peer_mod_list(non_null() const GC_Chat *chat, non_null() GC_Con
  * Returns packet length on success.
  * Returns -1 on failure.
  */
-static int make_gc_sanctions_list_packet(non_null() const GC_Chat *chat, non_null() uint8_t *data, uint16_t maxlen)
+static int make_gc_sanctions_list_packet(const GC_Chat *_Nonnull chat, uint8_t *_Nonnull data, uint16_t maxlen)
 {
     if (maxlen < sizeof(uint16_t)) {
         return -1;
@@ -3228,7 +3228,7 @@ static int make_gc_sanctions_list_packet(non_null() const GC_Chat *chat, non_nul
  *
  * Returns true on success.
  */
-static bool send_peer_sanctions_list(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn)
+static bool send_peer_sanctions_list(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn)
 {
     if (chat->moderation.sanctions_creds.version == 0) {
         return true;
@@ -3261,7 +3261,7 @@ static bool send_peer_sanctions_list(non_null() const GC_Chat *chat, non_null() 
  *
  * Returns true on success.
  */
-static bool broadcast_gc_sanctions_list(non_null() const GC_Chat *chat)
+static bool broadcast_gc_sanctions_list(const GC_Chat *_Nonnull chat)
 {
     const uint16_t packet_size = MOD_SANCTION_PACKED_SIZE * chat->moderation.num_sanctions +
                                  sizeof(uint16_t) + MOD_SANCTIONS_CREDS_SIZE;
@@ -3291,7 +3291,7 @@ static bool broadcast_gc_sanctions_list(non_null() const GC_Chat *chat)
  *
  * Returns true on success.
  */
-static bool update_gc_sanctions_list(non_null() GC_Chat *chat, non_null() const uint8_t *public_sig_key)
+static bool update_gc_sanctions_list(GC_Chat *_Nonnull chat, const uint8_t *_Nonnull public_sig_key)
 {
     const uint16_t num_replaced = sanctions_list_replace_sig(&chat->moderation, public_sig_key);
 
@@ -3306,7 +3306,7 @@ static bool update_gc_sanctions_list(non_null() GC_Chat *chat, non_null() const 
  *
  * Returns true on success.
  */
-static bool broadcast_gc_mod_list(non_null() const GC_Chat *chat)
+static bool broadcast_gc_mod_list(const GC_Chat *_Nonnull chat)
 {
     const uint16_t mod_list_size = chat->moderation.num_mods * MOD_LIST_ENTRY_SIZE;
     const uint16_t length = sizeof(uint16_t) + mod_list_size;
@@ -3336,7 +3336,7 @@ static bool broadcast_gc_mod_list(non_null() const GC_Chat *chat)
  * Returns -1 if the message is too long.
  * Returns -2 if the packet failed to send.
  */
-static int send_gc_self_exit(non_null() const GC_Chat *chat, nullable() const uint8_t *partmessage, uint16_t length)
+static int send_gc_self_exit(const GC_Chat *_Nonnull chat, const uint8_t *_Nullable partmessage, uint16_t length)
 {
     if (length > MAX_GC_PART_MESSAGE_SIZE) {
         return -1;
@@ -3350,7 +3350,7 @@ static int send_gc_self_exit(non_null() const GC_Chat *chat, nullable() const ui
 }
 
 /** @brief Handles a peer exit broadcast. */
-static void handle_gc_peer_exit(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn, nullable() const uint8_t *data, uint16_t length)
+static void handle_gc_peer_exit(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn, const uint8_t *_Nullable data, uint16_t length)
 {
     if (length > MAX_GC_PART_MESSAGE_SIZE) {
         length = MAX_GC_PART_MESSAGE_SIZE;
@@ -3422,8 +3422,8 @@ int gc_get_peer_nick_size(const GC_Chat *chat, GC_Peer_Id peer_id)
  * Return 0 if packet is handled correctly.
  * Return -1 on failure.
  */
-static int handle_gc_nick(non_null() const GC_Session *c, non_null() GC_Chat *chat, non_null() GC_Peer *peer, non_null() const uint8_t *nick,
-                          uint16_t length, nullable() void *userdata)
+static int handle_gc_nick(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat, GC_Peer *_Nonnull peer, const uint8_t *_Nonnull nick,
+                          uint16_t length, void *_Nullable userdata)
 {
     /* If this happens malicious behaviour is highly suspect */
     if (length == 0 || length > MAX_GC_NICK_SIZE) {
@@ -3449,7 +3449,7 @@ static int handle_gc_nick(non_null() const GC_Session *c, non_null() GC_Chat *ch
  * Returns -1 if peer_number is invalid.
  * Returns -2 if `public_key` is null.
  */
-static int get_gc_peer_public_key(non_null() const GC_Chat *chat, uint32_t peer_number, non_null() uint8_t *public_key)
+static int get_gc_peer_public_key(const GC_Chat *_Nonnull chat, uint32_t peer_number, uint8_t *_Nonnull public_key)
 {
     const GC_Connection *gconn = get_gc_connection(chat, peer_number);
 
@@ -3489,7 +3489,7 @@ int gc_get_peer_public_key_by_peer_id(const GC_Chat *chat, GC_Peer_Id peer_id, u
  * connection is direct, otherwise puts a placeholder in the buffer indicating that
  * the IP cannot be displayed.
  */
-static void get_gc_ip_ntoa(non_null() const IP_Port *ip_port, non_null() Ip_Ntoa *ip_str)
+static void get_gc_ip_ntoa(const IP_Port *_Nonnull ip_port, Ip_Ntoa *_Nonnull ip_str)
 {
     net_ip_ntoa(&ip_port->ip, ip_str);
 
@@ -3570,7 +3570,7 @@ unsigned int gc_get_peer_connection_status(const GC_Chat *chat, GC_Peer_Id peer_
  * Returns packet length on success.
  * Returns -1 on failure.
  */
-static int make_gc_topic_packet(non_null() const GC_Chat *chat, non_null() uint8_t *data, uint16_t length)
+static int make_gc_topic_packet(const GC_Chat *_Nonnull chat, uint8_t *_Nonnull data, uint16_t length)
 {
     if (length < SIGNATURE_SIZE + chat->topic_info.length + GC_MIN_PACKED_TOPIC_INFO_SIZE) {
         return -1;
@@ -3593,7 +3593,7 @@ static int make_gc_topic_packet(non_null() const GC_Chat *chat, non_null() uint8
  *
  * Returns true on success.
  */
-static bool send_peer_topic(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn)
+static bool send_peer_topic(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn)
 {
     const uint16_t packet_buf_size = SIGNATURE_SIZE + chat->topic_info.length + GC_MIN_PACKED_TOPIC_INFO_SIZE;
     uint8_t *packet = (uint8_t *)mem_balloc(chat->mem, packet_buf_size);
@@ -3624,7 +3624,7 @@ static bool send_peer_topic(non_null() const GC_Chat *chat, non_null() GC_Connec
  *
  * Return true on success.
  */
-static bool send_peer_key_rotation_request(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn)
+static bool send_peer_key_rotation_request(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn)
 {
     // Only the peer closest to the chat_id sends requests. This is to prevent both peers from sending
     // requests at the same time and ending up with a different resulting shared key
@@ -3659,7 +3659,7 @@ static bool send_peer_key_rotation_request(non_null() const GC_Chat *chat, non_n
  *
  * Returns true on success.
  */
-static bool broadcast_gc_topic(non_null() const GC_Chat *chat)
+static bool broadcast_gc_topic(const GC_Chat *_Nonnull chat)
 {
     const uint16_t packet_buf_size = SIGNATURE_SIZE + chat->topic_info.length + GC_MIN_PACKED_TOPIC_INFO_SIZE;
     uint8_t *packet = (uint8_t *)mem_balloc(chat->mem, packet_buf_size);
@@ -3782,7 +3782,7 @@ uint16_t gc_get_topic_size(const GC_Chat *chat)
  *
  * Returns true on success
  */
-static bool update_gc_topic(non_null() GC_Chat *chat, non_null() const uint8_t *public_sig_key)
+static bool update_gc_topic(GC_Chat *_Nonnull chat, const uint8_t *_Nonnull public_sig_key)
 {
     if (memcmp(public_sig_key, chat->topic_info.public_sig_key, SIG_PUBLIC_KEY_SIZE) != 0) {
         return true;
@@ -3796,7 +3796,7 @@ static bool update_gc_topic(non_null() GC_Chat *chat, non_null() const uint8_t *
  *
  * Return true if topic info is valid.
  */
-static bool handle_gc_topic_validate(non_null() const GC_Chat *chat, non_null() const GC_Peer *peer, non_null() const GC_TopicInfo *topic_info, bool topic_lock_enabled)
+static bool handle_gc_topic_validate(const GC_Chat *_Nonnull chat, const GC_Peer *_Nonnull peer, const GC_TopicInfo *_Nonnull topic_info, bool topic_lock_enabled)
 {
     if (topic_info->checksum != get_gc_topic_checksum(topic_info)) {
         LOGGER_WARNING(chat->log, "received invalid topic checksum");
@@ -3854,8 +3854,8 @@ static bool handle_gc_topic_validate(non_null() const GC_Chat *chat, non_null() 
  * Return 0 if packet is correctly handled.
  * Return -1 if packet has invalid size.
  */
-static int handle_gc_topic(non_null() const GC_Session *c, non_null() GC_Chat *chat, non_null() const GC_Peer *peer, non_null() const uint8_t *data,
-                           uint16_t length, nullable() void *userdata)
+static int handle_gc_topic(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat, const GC_Peer *_Nonnull peer, const uint8_t *_Nonnull data,
+                           uint16_t length, void *_Nullable userdata)
 {
     if (length < SIGNATURE_SIZE + GC_MIN_PACKED_TOPIC_INFO_SIZE) {
         return -1;
@@ -3910,7 +3910,7 @@ static int handle_gc_topic(non_null() const GC_Session *c, non_null() GC_Chat *c
  * Return -2 if we fail to create a new session keypair.
  * Return -3 if response packet fails to send.
  */
-static int handle_gc_key_exchange(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn, non_null() const uint8_t *data, uint16_t length)
+static int handle_gc_key_exchange(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn, const uint8_t *_Nonnull data, uint16_t length)
 {
     if (length < 1 + ENC_PUBLIC_KEY_SIZE) {
         return -1;
@@ -4040,7 +4040,7 @@ int gc_founder_set_password(GC_Chat *chat, const uint8_t *password, uint16_t pas
  * Return -3 if target peer is not a valid role (probably indicates sync issues).
  * Return -4 on validation failure.
  */
-static int validate_unpack_gc_set_mod(non_null() GC_Chat *chat, uint32_t peer_number, non_null() const uint8_t *data, uint16_t length, bool add_mod)
+static int validate_unpack_gc_set_mod(GC_Chat *_Nonnull chat, uint32_t peer_number, const uint8_t *_Nonnull data, uint16_t length, bool add_mod)
 {
     int target_peer_number;
     uint8_t mod_data[MOD_LIST_ENTRY_SIZE];
@@ -4097,8 +4097,8 @@ static int validate_unpack_gc_set_mod(non_null() GC_Chat *chat, uint32_t peer_nu
  * Return -2 if the packet contains invalid data.
  * Return -3 if `peer_number` does not designate a valid peer.
  */
-static int handle_gc_set_mod(non_null() const GC_Session *c, non_null() GC_Chat *chat, uint32_t peer_number, non_null() const uint8_t *data,
-                             uint16_t length, nullable() void *userdata)
+static int handle_gc_set_mod(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat, uint32_t peer_number, const uint8_t *_Nonnull data,
+                             uint16_t length, void *_Nullable userdata)
 {
     if (length < 1 + SIG_PUBLIC_KEY_SIZE) {
         return -1;
@@ -4141,7 +4141,7 @@ static int handle_gc_set_mod(non_null() const GC_Session *c, non_null() GC_Chat 
  *
  * Return true on success.
  */
-static bool send_gc_set_mod(non_null() const GC_Chat *chat, non_null() const GC_Connection *gconn, bool add_mod)
+static bool send_gc_set_mod(const GC_Chat *_Nonnull chat, const GC_Connection *_Nonnull gconn, bool add_mod)
 {
     const uint16_t length = 1 + SIG_PUBLIC_KEY_SIZE;
     uint8_t *data = (uint8_t *)mem_balloc(chat->mem, length);
@@ -4170,7 +4170,7 @@ static bool send_gc_set_mod(non_null() const GC_Chat *chat, non_null() const GC_
  *
  * Returns true on success.
  */
-static bool founder_gc_set_moderator(non_null() GC_Chat *chat, non_null() const GC_Connection *gconn, bool add_mod)
+static bool founder_gc_set_moderator(GC_Chat *_Nonnull chat, const GC_Connection *_Nonnull gconn, bool add_mod)
 {
     if (!self_gc_is_founder(chat)) {
         return false;
@@ -4221,7 +4221,7 @@ static bool founder_gc_set_moderator(non_null() GC_Chat *chat, non_null() const 
  * Return 0 if data is valid and sanctions list is successfully modified.
  * Return -1 if data is invalid format.
  */
-static int validate_unpack_observer_entry(non_null() GC_Chat *chat, non_null() const uint8_t *data, uint16_t length, non_null() const uint8_t *public_key, bool add_obs)
+static int validate_unpack_observer_entry(GC_Chat *_Nonnull chat, const uint8_t *_Nonnull data, uint16_t length, const uint8_t *_Nonnull public_key, bool add_obs)
 {
     Mod_Sanction_Creds creds;
 
@@ -4272,8 +4272,8 @@ static int validate_unpack_observer_entry(non_null() GC_Chat *chat, non_null() c
  * Return -2 if the packet contains invalid data.
  * Return -3 if `peer_number` does not designate a valid peer.
  */
-static int handle_gc_set_observer(non_null() const GC_Session *c, non_null() GC_Chat *chat, uint32_t peer_number, non_null() const uint8_t *data,
-                                  uint16_t length, nullable() void *userdata)
+static int handle_gc_set_observer(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat, uint32_t peer_number, const uint8_t *_Nonnull data,
+                                  uint16_t length, void *_Nullable userdata)
 {
     if (length <= 1 + EXT_PUBLIC_KEY_SIZE) {
         return -1;
@@ -4338,7 +4338,7 @@ static int handle_gc_set_observer(non_null() const GC_Session *c, non_null() GC_
  *
  * Returns true on success.
  */
-static bool send_gc_set_observer(non_null() const GC_Chat *chat, non_null() const Extended_Public_Key *target_ext_pk, non_null() const uint8_t *sanction_data, uint16_t length, bool add_obs)
+static bool send_gc_set_observer(const GC_Chat *_Nonnull chat, const Extended_Public_Key *_Nonnull target_ext_pk, const uint8_t *_Nonnull sanction_data, uint16_t length, bool add_obs)
 {
     const uint16_t packet_len = 1 + ENC_PUBLIC_KEY_SIZE + SIG_PUBLIC_KEY_SIZE + length;
     uint8_t *packet = (uint8_t *)mem_balloc(chat->mem, packet_len);
@@ -4368,7 +4368,7 @@ static bool send_gc_set_observer(non_null() const GC_Chat *chat, non_null() cons
  *
  * Returns true on success.
  */
-static bool mod_gc_set_observer(non_null() GC_Chat *chat, uint32_t peer_number, bool add_obs)
+static bool mod_gc_set_observer(GC_Chat *_Nonnull chat, uint32_t peer_number, bool add_obs)
 {
     const GC_Connection *gconn = get_gc_connection(chat, peer_number);
 
@@ -4445,7 +4445,7 @@ static bool mod_gc_set_observer(non_null() GC_Chat *chat, uint32_t peer_number, 
  *
  * Return true on success.
  */
-static bool apply_new_gc_role(non_null() GC_Chat *chat, uint32_t peer_number, Group_Role current_role, Group_Role new_role)
+static bool apply_new_gc_role(GC_Chat *_Nonnull chat, uint32_t peer_number, Group_Role current_role, Group_Role new_role)
 {
     const GC_Connection *gconn = get_gc_connection(chat, peer_number);
 
@@ -4555,7 +4555,7 @@ int gc_set_peer_role(const Messenger *m, int group_number, GC_Peer_Id peer_id, G
 }
 
 /** @brief Return true if topic lock is enabled */
-static bool group_topic_lock_enabled(non_null() const GC_Chat *chat)
+static bool group_topic_lock_enabled(const GC_Chat *_Nonnull chat)
 {
     return chat->shared_state.topic_lock == GC_TOPIC_LOCK_ENABLED;
 }
@@ -4802,8 +4802,8 @@ int gc_send_message(const GC_Chat *chat, const uint8_t *message, uint16_t length
  * Return 0 if packet is handled correctly.
  * Return -1 if packet has invalid size.
  */
-static int handle_gc_message(non_null() const GC_Session *c, non_null() const GC_Chat *chat, non_null() const GC_Peer *peer, non_null() const uint8_t *data,
-                             uint16_t length, uint8_t type, nullable() void *userdata)
+static int handle_gc_message(const GC_Session *_Nonnull c, const GC_Chat *_Nonnull chat, const GC_Peer *_Nonnull peer, const uint8_t *_Nonnull data,
+                             uint16_t length, uint8_t type, void *_Nullable userdata)
 {
     if (data == nullptr || length > MAX_GC_MESSAGE_RAW_SIZE || length <= GC_MESSAGE_PSEUDO_ID_SIZE) {
         return -1;
@@ -4902,8 +4902,8 @@ int gc_send_private_message(const GC_Chat *chat, GC_Peer_Id peer_id, uint8_t typ
  * Return 0 if packet is handled correctly.
  * Return -1 if packet has invalid size.
  */
-static int handle_gc_private_message(non_null() const GC_Session *c, non_null() const GC_Chat *chat, non_null() const GC_Peer *peer, non_null() const uint8_t *data,
-                                     uint16_t length, nullable() void *userdata)
+static int handle_gc_private_message(const GC_Session *_Nonnull c, const GC_Chat *_Nonnull chat, const GC_Peer *_Nonnull peer, const uint8_t *_Nonnull data,
+                                     uint16_t length, void *_Nullable userdata)
 {
     if (data == nullptr || length > MAX_GC_MESSAGE_SIZE || length <= 1 + GC_MESSAGE_PSEUDO_ID_SIZE) {
         return -1;
@@ -4973,8 +4973,8 @@ int gc_send_custom_private_packet(const GC_Chat *chat, bool lossless, GC_Peer_Id
  * @retval 0 if packet is handled correctly.
  * @retval -1 if packet has invalid size.
  */
-static int handle_gc_custom_private_packet(non_null() const GC_Session *c, non_null() const GC_Chat *chat, non_null() const GC_Peer *peer,
-        non_null() const uint8_t *data, uint16_t length, bool lossless, nullable() void *userdata)
+static int handle_gc_custom_private_packet(const GC_Session *_Nonnull c, const GC_Chat *_Nonnull chat, const GC_Peer *_Nonnull peer,
+        const uint8_t *_Nonnull data, uint16_t length, bool lossless, void *_Nullable userdata)
 {
     if (!custom_gc_packet_length_is_valid(length, lossless)) {
         return -1;
@@ -5017,8 +5017,8 @@ int gc_send_custom_packet(const GC_Chat *chat, bool lossless, const uint8_t *dat
  * Return 0 if packet is handled correctly.
  * Return -1 if packet has invalid size.
  */
-static int handle_gc_custom_packet(non_null() const GC_Session *c, non_null() const GC_Chat *chat, non_null() const GC_Peer *peer, non_null() const uint8_t *data,
-                                   uint16_t length, bool lossless, nullable() void *userdata)
+static int handle_gc_custom_packet(const GC_Session *_Nonnull c, const GC_Chat *_Nonnull chat, const GC_Peer *_Nonnull peer, const uint8_t *_Nonnull data,
+                                   uint16_t length, bool lossless, void *_Nullable userdata)
 {
     if (!custom_gc_packet_length_is_valid(length, lossless)) {
         return -1;
@@ -5040,8 +5040,8 @@ static int handle_gc_custom_packet(non_null() const GC_Session *c, non_null() co
  * Return 0 if packet is handled correctly.
  * Return -1 if packet has invalid size.
  */
-static int handle_gc_kick_peer(non_null() const GC_Session *c, non_null() GC_Chat *chat, non_null() const GC_Peer *setter_peer, non_null() const uint8_t *data,
-                               uint16_t length, nullable() void *userdata)
+static int handle_gc_kick_peer(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat, const GC_Peer *_Nonnull setter_peer, const uint8_t *_Nonnull data,
+                               uint16_t length, void *_Nullable userdata)
 {
     if (length < ENC_PUBLIC_KEY_SIZE) {
         return -1;
@@ -5099,7 +5099,7 @@ static int handle_gc_kick_peer(non_null() const GC_Session *c, non_null() GC_Cha
  *
  * Returns true on success.
  */
-static bool send_gc_kick_peer(non_null() const GC_Chat *chat, non_null() const GC_Connection *gconn)
+static bool send_gc_kick_peer(const GC_Chat *_Nonnull chat, const GC_Connection *_Nonnull gconn)
 {
     uint8_t packet[ENC_PUBLIC_KEY_SIZE];
     memcpy(packet, gconn->addr.public_key.enc, ENC_PUBLIC_KEY_SIZE);
@@ -5188,7 +5188,7 @@ bool gc_send_message_ack(const GC_Chat *chat, GC_Connection *gconn, uint64_t mes
  * Return -2 if we failed to handle the ack (may be caused by connection issues).
  * Return -3 if we failed to re-send a requested packet.
  */
-static int handle_gc_message_ack(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn, non_null() const uint8_t *data, uint16_t length)
+static int handle_gc_message_ack(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn, const uint8_t *_Nonnull data, uint16_t length)
 {
     if (length < GC_LOSSLESS_ACK_PACKET_SIZE) {
         return -1;
@@ -5234,7 +5234,7 @@ static int handle_gc_message_ack(non_null() const GC_Chat *chat, non_null() GC_C
  *
  * Return true on success.
  */
-static bool send_gc_hs_response_ack(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn)
+static bool send_gc_hs_response_ack(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn)
 {
     return send_lossless_group_packet(chat, gconn, nullptr, 0, GP_HS_RESPONSE_ACK);
 }
@@ -5244,7 +5244,7 @@ static bool send_gc_hs_response_ack(non_null() const GC_Chat *chat, non_null() G
  * Return 0 if packet is handled correctly.
  * Return -1 if we failed to respond with an invite request.
  */
-static int handle_gc_hs_response_ack(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn)
+static int handle_gc_hs_response_ack(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn)
 {
     gconn->handshaked = true;  // has to be true before we can send a lossless packet
 
@@ -5280,8 +5280,8 @@ int gc_set_ignore(const GC_Chat *chat, GC_Peer_Id peer_id, bool ignore)
  * Returns 0 if packet is handled correctly.
  * Returns -1 on failure.
  */
-static int handle_gc_broadcast(non_null() const GC_Session *c, non_null() GC_Chat *chat, uint32_t peer_number, non_null() const uint8_t *data,
-                               uint16_t length, nullable() void *userdata)
+static int handle_gc_broadcast(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat, uint32_t peer_number, const uint8_t *_Nonnull data,
+                               uint16_t length, void *_Nullable userdata)
 {
     if (length < GC_BROADCAST_ENC_HEADER_SIZE) {
         return -1;
@@ -5374,8 +5374,8 @@ static int handle_gc_broadcast(non_null() const GC_Session *c, non_null() GC_Cha
  * Return -1 if length is invalid.
  * Return -2 if decryption fails.
  */
-static int unwrap_group_handshake_packet(non_null() const Logger *log, non_null() const Memory *mem, non_null() const uint8_t *self_sk, non_null() const uint8_t *sender_pk, non_null() uint8_t *plain,
-        size_t plain_size, non_null() const uint8_t *packet, uint16_t length)
+static int unwrap_group_handshake_packet(const Logger *_Nonnull log, const Memory *_Nonnull mem, const uint8_t *_Nonnull self_sk, const uint8_t *_Nonnull sender_pk, uint8_t *_Nonnull plain,
+        size_t plain_size, const uint8_t *_Nonnull packet, uint16_t length)
 {
     if (length <= CRYPTO_NONCE_SIZE) {
         LOGGER_FATAL(log, "Invalid handshake packet length %u", length);
@@ -5403,8 +5403,8 @@ static int unwrap_group_handshake_packet(non_null() const Logger *log, non_null(
  * Return -2 on memory allocation failure.
  * Return -3 if encryption fails.
  */
-static int wrap_group_handshake_packet(non_null() const Logger *log, non_null() const Memory *mem, non_null() const Random *rng, non_null() const uint8_t *self_pk, non_null() const uint8_t *self_sk,
-                                       non_null() const uint8_t *target_pk, non_null() uint8_t *packet, uint32_t packet_size, non_null() const uint8_t *data, uint16_t length)
+static int wrap_group_handshake_packet(const Logger *_Nonnull log, const Memory *_Nonnull mem, const Random *_Nonnull rng, const uint8_t *_Nonnull self_pk, const uint8_t *_Nonnull self_sk,
+                                       const uint8_t *_Nonnull target_pk, uint8_t *_Nonnull packet, uint32_t packet_size, const uint8_t *_Nonnull data, uint16_t length)
 {
     if (packet_size != GC_MIN_ENCRYPTED_HS_PAYLOAD_SIZE + sizeof(Node_format)) {
         LOGGER_FATAL(log, "Invalid packet size: %u", packet_size);
@@ -5448,8 +5448,8 @@ static int wrap_group_handshake_packet(non_null() const Logger *log, non_null() 
  * Returns length of encrypted packet on success.
  * Returns -1 on failure.
  */
-static int make_gc_handshake_packet(non_null() const GC_Chat *chat, non_null() const GC_Connection *gconn, uint8_t handshake_type, uint8_t request_type, uint8_t join_type, non_null() uint8_t *packet,
-                                    size_t packet_size, non_null() const Node_format *node)
+static int make_gc_handshake_packet(const GC_Chat *_Nonnull chat, const GC_Connection *_Nonnull gconn, uint8_t handshake_type, uint8_t request_type, uint8_t join_type, uint8_t *_Nonnull packet,
+                                    size_t packet_size, const Node_format *_Nonnull node)
 {
     if (chat == nullptr || gconn == nullptr || node == nullptr) {
         return -1;
@@ -5500,7 +5500,7 @@ static int make_gc_handshake_packet(non_null() const GC_Chat *chat, non_null() c
  *
  * Returns true on success.
  */
-static bool send_gc_handshake_packet(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn, uint8_t handshake_type, uint8_t request_type, uint8_t join_type)
+static bool send_gc_handshake_packet(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn, uint8_t handshake_type, uint8_t request_type, uint8_t join_type)
 {
     if (gconn == nullptr) {
         return false;
@@ -5588,7 +5588,7 @@ static bool send_gc_oob_handshake_request(const GC_Chat *chat, const GC_Connecti
  * Returns peer_number of new connected peer on success.
  * Returns -1 on failure.
  */
-static int handle_gc_handshake_response(non_null() const GC_Chat *chat, non_null() const uint8_t *sender_pk, non_null() const uint8_t *data, uint16_t length)
+static int handle_gc_handshake_response(const GC_Chat *_Nonnull chat, const uint8_t *_Nonnull sender_pk, const uint8_t *_Nonnull data, uint16_t length)
 {
     // this should be checked at lower level; this is a redundant defense check. Ideally we should
     // guarantee that this can never happen in the future.
@@ -5652,7 +5652,7 @@ static int handle_gc_handshake_response(non_null() const GC_Chat *chat, non_null
  *
  * Return true on success.
  */
-static bool send_gc_handshake_response(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn)
+static bool send_gc_handshake_response(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn)
 {
     return send_gc_handshake_packet(chat, gconn, GH_RESPONSE, gconn->pending_handshake_type, 0);
 }
@@ -5667,8 +5667,8 @@ static bool send_gc_handshake_response(non_null() const GC_Chat *chat, non_null(
  * Return -1 on failure.
  */
 #define GC_NEW_PEER_CONNECTION_LIMIT 10
-static int handle_gc_handshake_request(non_null() GC_Chat *chat, nullable() const IP_Port *ipp, non_null() const uint8_t *sender_pk,
-                                       non_null() const uint8_t *data, uint16_t length)
+static int handle_gc_handshake_request(GC_Chat *_Nonnull chat, const IP_Port *_Nullable ipp, const uint8_t *_Nonnull sender_pk,
+                                       const uint8_t *_Nonnull data, uint16_t length)
 {
     // this should be checked at lower level; this is a redundant defense check. Ideally we should
     // guarantee that this can never happen in the future.
@@ -5791,8 +5791,8 @@ static int handle_gc_handshake_request(non_null() GC_Chat *chat, nullable() cons
  * Returns the peer_number of the connecting peer on success.
  * Returns -1 on failure.
  */
-static int handle_gc_handshake_packet(non_null() GC_Chat *chat, non_null() const uint8_t *sender_pk, nullable() const IP_Port *ipp,
-                                      non_null() const uint8_t *packet, uint16_t length, bool direct_conn, nullable() void *userdata)
+static int handle_gc_handshake_packet(GC_Chat *_Nonnull chat, const uint8_t *_Nonnull sender_pk, const IP_Port *_Nullable ipp,
+                                      const uint8_t *_Nonnull packet, uint16_t length, bool direct_conn, void *_Nullable userdata)
 {
     if (length < GC_MIN_HS_PACKET_PAYLOAD_SIZE + CRYPTO_MAC_SIZE + CRYPTO_NONCE_SIZE) {
         return -1;
@@ -5970,9 +5970,9 @@ bool handle_gc_lossless_helper(const GC_Session *c, GC_Chat *chat, uint32_t peer
  *
  * Return true if packet is handled successfully.
  */
-static bool handle_gc_packet_fragment(non_null() const GC_Session *c, non_null() GC_Chat *chat, uint32_t peer_number, non_null() GC_Connection *gconn,
-                                      nullable() const uint8_t *data, uint16_t length, uint8_t packet_type, uint64_t message_id,
-                                      nullable() void *userdata)
+static bool handle_gc_packet_fragment(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat, uint32_t peer_number, GC_Connection *_Nonnull gconn,
+                                      const uint8_t *_Nullable data, uint16_t length, uint8_t packet_type, uint64_t message_id,
+                                      void *_Nullable userdata)
 {
     if (gconn->last_chunk_id != 0 && message_id != gconn->last_chunk_id + 1) {
         return gc_send_message_ack(chat, gconn, gconn->last_chunk_id + 1, GR_ACK_REQ);
@@ -6004,8 +6004,8 @@ static bool handle_gc_packet_fragment(non_null() const GC_Session *c, non_null()
  *
  * Returns true if packet is successfully handled.
  */
-static bool handle_gc_lossless_packet(non_null() const GC_Session *c, non_null() GC_Chat *chat, non_null() const uint8_t *sender_pk,
-                                      non_null() const uint8_t *packet, uint16_t length, bool direct_conn, nullable() void *userdata)
+static bool handle_gc_lossless_packet(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat, const uint8_t *_Nonnull sender_pk,
+                                      const uint8_t *_Nonnull packet, uint16_t length, bool direct_conn, void *_Nullable userdata)
 {
     if (length < GC_MIN_LOSSLESS_PAYLOAD_SIZE) {
         return false;
@@ -6115,8 +6115,8 @@ static bool handle_gc_lossless_packet(non_null() const GC_Session *c, non_null()
 }
 
 static int handle_gc_lossy_packet_decoded(
-    non_null() const GC_Session *c, non_null() GC_Chat *chat, non_null() GC_Connection *gconn, non_null() const GC_Peer *peer,
-    uint8_t packet_type, non_null() const uint8_t *data, uint16_t payload_len, nullable() void *userdata)
+    const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn, const GC_Peer *_Nonnull peer,
+    uint8_t packet_type, const uint8_t *_Nonnull data, uint16_t payload_len, void *_Nullable userdata)
 {
     switch (packet_type) {
         case GP_MESSAGE_ACK: {
@@ -6152,8 +6152,8 @@ static int handle_gc_lossy_packet_decoded(
  *
  * Return true if packet is handled successfully.
  */
-static bool handle_gc_lossy_packet(non_null() const GC_Session *c, non_null() GC_Chat *chat, non_null() const uint8_t *sender_pk,
-                                   non_null() const uint8_t *packet, uint16_t length, bool direct_conn, nullable() void *userdata)
+static bool handle_gc_lossy_packet(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat, const uint8_t *_Nonnull sender_pk,
+                                   const uint8_t *_Nonnull packet, uint16_t length, bool direct_conn, void *_Nullable userdata)
 {
     if (length < GC_MIN_LOSSY_PAYLOAD_SIZE) {
         return false;
@@ -6215,7 +6215,7 @@ static bool handle_gc_lossy_packet(non_null() const GC_Session *c, non_null() GC
 }
 
 /** @brief Return true if group is either connected or attempting to connect. */
-static bool group_can_handle_packets(non_null() const GC_Chat *chat)
+static bool group_can_handle_packets(const GC_Chat *_Nonnull chat)
 {
     const GC_Conn_State state = chat->connection_state;
     return state == CS_CONNECTING || state == CS_CONNECTED;
@@ -6227,7 +6227,7 @@ static bool group_can_handle_packets(non_null() const GC_Chat *chat)
  * Returns -1 on failure.
  */
 #define MIN_TCP_PACKET_SIZE (1 + ENC_PUBLIC_KEY_SIZE + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE)
-static int handle_gc_tcp_packet(non_null() void *object, int crypt_connection_id, non_null() const uint8_t *packet, uint16_t length, nullable() void *userdata)
+static int handle_gc_tcp_packet(void *_Nonnull object, int crypt_connection_id, const uint8_t *_Nonnull packet, uint16_t length, void *_Nullable userdata)
 {
     const Messenger *m = (Messenger *)object;
     if (m == nullptr) {
@@ -6305,8 +6305,8 @@ static int handle_gc_tcp_packet(non_null() void *object, int crypt_connection_id
     }
 }
 
-static int handle_gc_tcp_oob_packet(non_null() void *object, non_null() const uint8_t *public_key, unsigned int tcp_connections_number,
-                                    non_null() const uint8_t *packet, uint16_t length, nullable() void *userdata)
+static int handle_gc_tcp_oob_packet(void *_Nonnull object, const uint8_t *_Nonnull public_key, unsigned int tcp_connections_number,
+                                    const uint8_t *_Nonnull packet, uint16_t length, void *_Nullable userdata)
 {
     const Messenger *m = (Messenger *)object;
     if (m == nullptr) {
@@ -6359,8 +6359,8 @@ static int handle_gc_tcp_oob_packet(non_null() void *object, non_null() const ui
 }
 
 #define MIN_UDP_PACKET_SIZE (1 + ENC_PUBLIC_KEY_SIZE + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE)
-static int handle_gc_udp_packet(non_null() void *object, non_null() const IP_Port *source, non_null() const uint8_t *packet, uint16_t length,
-                                nullable() void *userdata)
+static int handle_gc_udp_packet(void *_Nonnull object, const IP_Port *_Nonnull source, const uint8_t *_Nonnull packet, uint16_t length,
+                                void *_Nullable userdata)
 {
     const Messenger *m = (Messenger *)object;
     if (m == nullptr) {
@@ -6544,7 +6544,7 @@ void gc_callback_rejected(const Messenger *m, gc_rejected_cb *function)
  *
  * Return true on success.
  */
-static bool peer_delete(non_null() const GC_Session *c, non_null() GC_Chat *chat, uint32_t peer_number, nullable() void *userdata)
+static bool peer_delete(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat, uint32_t peer_number, void *_Nullable userdata)
 {
     GC_Peer *peer = get_gc_peer(chat, peer_number);
     if (peer == nullptr) {
@@ -6727,7 +6727,7 @@ int peer_add(GC_Chat *chat, const IP_Port *ipp, const uint8_t *public_key)
 }
 
 /** @brief Copies own peer data to `peer`. */
-static void copy_self(non_null() const GC_Chat *chat, non_null() GC_Peer *peer)
+static void copy_self(const GC_Chat *_Nonnull chat, GC_Peer *_Nonnull peer)
 {
     *peer = (GC_Peer) {
         0
@@ -6742,7 +6742,7 @@ static void copy_self(non_null() const GC_Chat *chat, non_null() GC_Peer *peer)
 /** @brief Returns true if we haven't received a ping from this peer after n seconds.
  * n depends on whether or not the peer has been confirmed.
  */
-static bool peer_timed_out(non_null() const Mono_Time *mono_time, non_null() const GC_Connection *gconn)
+static bool peer_timed_out(const Mono_Time *_Nonnull mono_time, const GC_Connection *_Nonnull gconn)
 {
     return mono_time_is_timeout(mono_time, gconn->last_received_packet_time, gconn->confirmed
                                 ? GC_CONFIRMED_PEER_TIMEOUT
@@ -6755,7 +6755,7 @@ static bool peer_timed_out(non_null() const Mono_Time *mono_time, non_null() con
  *
  * Return true on success.
  */
-static bool send_pending_handshake(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn)
+static bool send_pending_handshake(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn)
 {
     if (chat == nullptr || gconn == nullptr) {
         return false;
@@ -6785,7 +6785,7 @@ static bool send_pending_handshake(non_null() const GC_Chat *chat, non_null() GC
 }
 
 #define GC_TCP_RELAY_SEND_INTERVAL (60 * 3)
-static void do_peer_connections(non_null() const GC_Session *c, non_null() GC_Chat *chat, nullable() void *userdata)
+static void do_peer_connections(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat, void *_Nullable userdata)
 {
     for (uint32_t i = 1; i < chat->numpeers; ++i) {
         GC_Connection *gconn = get_gc_connection(chat, i);
@@ -6820,7 +6820,7 @@ static void do_peer_connections(non_null() const GC_Session *c, non_null() GC_Ch
  * load peers from our saved peers list and initiate handshake requests with them.
  */
 #define LOAD_PEERS_TIMEOUT (GC_UNCONFIRMED_PEER_TIMEOUT + 10)
-static void do_handshakes(non_null() GC_Chat *chat)
+static void do_handshakes(GC_Chat *_Nonnull chat)
 {
     for (uint32_t i = 1; i < chat->numpeers; ++i) {
         GC_Connection *gconn = get_gc_connection(chat, i);
@@ -6844,7 +6844,7 @@ static void do_handshakes(non_null() GC_Chat *chat)
 }
 
 /** @brief Adds `gconn` to the group timeout list. */
-static void add_gc_peer_timeout_list(non_null() GC_Chat *chat, non_null() const GC_Connection *gconn)
+static void add_gc_peer_timeout_list(GC_Chat *_Nonnull chat, const GC_Connection *_Nonnull gconn)
 {
     const size_t idx = chat->timeout_list_index;
     const uint64_t tm = mono_time_get(chat->mono_time);
@@ -6856,7 +6856,7 @@ static void add_gc_peer_timeout_list(non_null() GC_Chat *chat, non_null() const 
     chat->timeout_list_index = (idx + 1) % MAX_GC_SAVED_TIMEOUTS;
 }
 
-static void do_peer_delete(non_null() const GC_Session *c, non_null() GC_Chat *chat, nullable() void *userdata)
+static void do_peer_delete(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat, void *_Nullable userdata)
 {
     for (uint32_t i = 1; i < chat->numpeers; ++i) {
         GC_Connection *gconn = get_gc_connection(chat, i);
@@ -6892,7 +6892,7 @@ static void do_peer_delete(non_null() const GC_Session *c, non_null() GC_Chat *c
  *
  * Return true on success.
  */
-static bool ping_peer(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn)
+static bool ping_peer(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn)
 {
     const uint16_t buf_size = GC_PING_PACKET_MIN_DATA_SIZE + sizeof(IP_Port);
     uint8_t *data = (uint8_t *)mem_balloc(chat->mem, buf_size);
@@ -6960,7 +6960,7 @@ static bool ping_peer(non_null() const GC_Chat *chat, non_null() GC_Connection *
  * do not have a direct connection with.
  */
 #define GC_DO_PINGS_INTERVAL 2
-static void do_gc_ping_and_key_rotation(non_null() GC_Chat *chat)
+static void do_gc_ping_and_key_rotation(GC_Chat *_Nonnull chat)
 {
     if (!mono_time_is_timeout(chat->mono_time, chat->last_ping_interval, GC_DO_PINGS_INTERVAL)) {
         return;
@@ -6992,7 +6992,7 @@ static void do_gc_ping_and_key_rotation(non_null() GC_Chat *chat)
     chat->last_ping_interval = tm;
 }
 
-static void do_new_connection_cooldown(non_null() GC_Chat *chat)
+static void do_new_connection_cooldown(GC_Chat *_Nonnull chat)
 {
     if (chat->connection_o_metre == 0) {
         return;
@@ -7012,7 +7012,7 @@ static void do_new_connection_cooldown(non_null() GC_Chat *chat)
 }
 
 #define TCP_RELAYS_CHECK_INTERVAL 10
-static void do_gc_tcp(non_null() const GC_Session *c, non_null() GC_Chat *chat, nullable() void *userdata)
+static void do_gc_tcp(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat, void *_Nullable userdata)
 {
     if (chat->tcp_conn == nullptr || !group_can_handle_packets(chat)) {
         return;
@@ -7042,7 +7042,7 @@ static void do_gc_tcp(non_null() const GC_Session *c, non_null() GC_Chat *chat, 
  */
 #define GC_SELF_CONNECTION_CHECK_INTERVAL 5  // how often in seconds we should run this function
 #define GC_SELF_REFRESH_ANNOUNCE_INTERVAL (60 * 20)  // how often in seconds we force refresh our group announcement
-static void do_self_connection(non_null() const GC_Session *c, non_null() GC_Chat *chat)
+static void do_self_connection(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat)
 {
     if (!mono_time_is_timeout(chat->mono_time, chat->last_self_announce_check, GC_SELF_CONNECTION_CHECK_INTERVAL)) {
         return;
@@ -7070,7 +7070,7 @@ static void do_self_connection(non_null() const GC_Session *c, non_null() GC_Cha
  * should automatically do this for us.
  */
 #define TIMED_OUT_RECONN_INTERVAL 2
-static void do_timed_out_reconn(non_null() GC_Chat *chat)
+static void do_timed_out_reconn(GC_Chat *_Nonnull chat)
 {
     if (is_public_chat(chat)) {
         return;
@@ -7152,7 +7152,7 @@ void do_gc(GC_Session *c, void *userdata)
  *
  * Return true on success.
  */
-static bool realloc_groupchats(non_null() const Memory *mem, non_null() GC_Session *c, uint32_t n)
+static bool realloc_groupchats(const Memory *_Nonnull mem, GC_Session *_Nonnull c, uint32_t n)
 {
     if (n == 0) {
         mem_delete(mem, c->chats);
@@ -7170,7 +7170,7 @@ static bool realloc_groupchats(non_null() const Memory *mem, non_null() GC_Sessi
     return true;
 }
 
-static int get_new_group_index(non_null() const Memory *mem, non_null() GC_Session *c)
+static int get_new_group_index(const Memory *_Nonnull mem, GC_Session *_Nonnull c)
 {
     if (c == nullptr) {
         return -1;
@@ -7225,7 +7225,7 @@ static void add_tcp_relays_to_chat(const GC_Session *c, GC_Chat *chat)
     mem_delete(chat->mem, tcp_relays);
 }
 
-static bool init_gc_tcp_connection(non_null() const GC_Session *c, non_null() GC_Chat *chat)
+static bool init_gc_tcp_connection(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat)
 {
     const Messenger *m = c->messenger;
 
@@ -7245,7 +7245,7 @@ static bool init_gc_tcp_connection(non_null() const GC_Session *c, non_null() GC
 }
 
 /** Initializes default shared state values. */
-static void init_gc_shared_state(non_null() GC_Chat *chat, Group_Privacy_State privacy_state)
+static void init_gc_shared_state(GC_Chat *_Nonnull chat, Group_Privacy_State privacy_state)
 {
     chat->shared_state.maxpeers = MAX_GC_PEERS_DEFAULT;
     chat->shared_state.privacy_state = privacy_state;
@@ -7257,7 +7257,7 @@ static void init_gc_shared_state(non_null() GC_Chat *chat, Group_Privacy_State p
  *
  * Return true on success.
  */
-static bool init_gc_shared_state_founder(non_null() GC_Chat *chat, Group_Privacy_State privacy_state, non_null() const uint8_t *group_name, uint16_t name_length)
+static bool init_gc_shared_state_founder(GC_Chat *_Nonnull chat, Group_Privacy_State privacy_state, const uint8_t *_Nonnull group_name, uint16_t name_length)
 {
     chat->shared_state.founder_public_key = chat->self_public_key;
     memcpy(chat->shared_state.group_name, group_name, name_length);
@@ -7272,7 +7272,7 @@ static bool init_gc_shared_state_founder(non_null() GC_Chat *chat, Group_Privacy
  * This must be called before any moderation
  * or sanctions related operations.
  */
-static void init_gc_moderation(non_null() GC_Chat *chat)
+static void init_gc_moderation(GC_Chat *_Nonnull chat)
 {
     memcpy(chat->moderation.founder_public_sig_key,
            get_sig_pk(&chat->shared_state.founder_public_key), SIG_PUBLIC_KEY_SIZE);
@@ -7283,9 +7283,9 @@ static void init_gc_moderation(non_null() GC_Chat *chat)
     chat->moderation.mem = chat->mem;
 }
 
-static bool create_new_chat_ext_keypair(non_null() GC_Chat *chat);
+static bool create_new_chat_ext_keypair(GC_Chat *_Nonnull chat);
 
-static int create_new_group(non_null() const Memory *mem, non_null() GC_Session *c, non_null() const uint8_t *nick, size_t nick_length, bool founder, const Group_Privacy_State privacy_state)
+static int create_new_group(const Memory *_Nonnull mem, GC_Session *_Nonnull c, const uint8_t *_Nonnull nick, size_t nick_length, bool founder, const Group_Privacy_State privacy_state)
 {
     if (nick == nullptr || nick_length == 0) {
         return -1;
@@ -7358,7 +7358,7 @@ static int create_new_group(non_null() const Memory *mem, non_null() GC_Session 
  *
  * Return true on success.
  */
-static bool init_gc_sanctions_creds(non_null() GC_Chat *chat)
+static bool init_gc_sanctions_creds(GC_Chat *_Nonnull chat)
 {
     return sanctions_list_make_creds(&chat->moderation);
 }
@@ -7738,7 +7738,7 @@ int gc_invite_friend(const GC_Session *c, GC_Chat *chat, int32_t friend_number,
  * Return -2 if `chat `is null.
  * Return -3 if packet failed to send.
  */
-static int send_gc_invite_accepted_packet(non_null() const Messenger *m, non_null() const GC_Chat *chat, uint32_t friend_number)
+static int send_gc_invite_accepted_packet(const Messenger *_Nonnull m, const GC_Chat *_Nonnull chat, uint32_t friend_number)
 {
     if (!friend_is_valid(m, friend_number)) {
         return -1;
@@ -7774,7 +7774,7 @@ static int send_gc_invite_accepted_packet(non_null() const Messenger *m, non_nul
  *
  * Return true on success.
  */
-static bool send_gc_invite_confirmed_packet(non_null() const Messenger *m, non_null() const GC_Chat *chat, uint32_t friend_number, non_null() const uint8_t *data, uint16_t length)
+static bool send_gc_invite_confirmed_packet(const Messenger *_Nonnull m, const GC_Chat *_Nonnull chat, uint32_t friend_number, const uint8_t *_Nonnull data, uint16_t length)
 {
     if (!friend_is_valid(m, friend_number)) {
         return false;
@@ -7814,7 +7814,7 @@ static bool send_gc_invite_confirmed_packet(non_null() const Messenger *m, non_n
  *
  * Returns the number of relays successfully added.
  */
-static uint32_t add_gc_tcp_relays(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn, non_null() const Node_format *tcp_relays, size_t num_nodes)
+static uint32_t add_gc_tcp_relays(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn, const Node_format *_Nonnull tcp_relays, size_t num_nodes)
 {
     uint32_t relays_added = 0;
 
@@ -7833,7 +7833,7 @@ static uint32_t add_gc_tcp_relays(non_null() const GC_Chat *chat, non_null() GC_
     return relays_added;
 }
 
-static bool copy_friend_ip_port_to_gconn(non_null() const Messenger *m, int friend_number, non_null() GC_Connection *gconn)
+static bool copy_friend_ip_port_to_gconn(const Messenger *_Nonnull m, int friend_number, GC_Connection *_Nonnull gconn)
 {
     if (!friend_is_valid(m, friend_number)) {
         return false;
@@ -7914,7 +7914,7 @@ int handle_gc_invite_confirmed_packet(const GC_Session *c, int friend_number, co
 }
 
 /** Return true if we have a pending sent invite for our friend designated by `friend_number`. */
-static bool friend_was_invited(non_null() const Messenger *m, non_null() GC_Chat *chat, int friend_number)
+static bool friend_was_invited(const Messenger *_Nonnull m, GC_Chat *_Nonnull chat, int friend_number)
 {
     for (size_t i = 0; i < MAX_GC_SAVED_INVITES; ++i) {
         if (chat->saved_invites[i] == friend_number) {
@@ -8053,8 +8053,8 @@ int gc_accept_invite(GC_Session *c, int32_t friend_number, const uint8_t *data, 
     return group_number;
 }
 
-static bool gc_handle_announce_response_callback(non_null() Onion_Client *onion_c, uint32_t sendback_num, non_null() const uint8_t *data,
-        size_t data_length, nullable() void *user_data);
+static bool gc_handle_announce_response_callback(Onion_Client *_Nonnull onion_c, uint32_t sendback_num, const uint8_t *_Nonnull data,
+        size_t data_length, void *_Nullable user_data);
 GC_Session *new_dht_groupchats(Messenger *m)
 {
     if (m == nullptr) {
@@ -8140,7 +8140,7 @@ int gc_group_exit(GC_Session *c, GC_Chat *chat, const uint8_t *message, uint16_t
     return group_can_handle_packets(chat) ? send_gc_self_exit(chat, message, length) : 0;
 }
 
-static int kill_group(non_null() GC_Session *c, non_null() GC_Chat *chat)
+static int kill_group(GC_Session *_Nonnull c, GC_Chat *_Nonnull chat)
 {
     const int ret = gc_group_exit(c, chat, nullptr, 0);
     group_delete(c, chat);
@@ -8255,7 +8255,7 @@ static void create_gc_session_keypair(const Logger *log, const Random *rng, uint
  *
  * Return false if key generation fails.
  */
-static bool create_new_chat_ext_keypair(non_null() GC_Chat *chat)
+static bool create_new_chat_ext_keypair(GC_Chat *_Nonnull chat)
 {
     crypto_memlock(&chat->self_secret_key, sizeof(chat->self_secret_key));
 
@@ -8308,7 +8308,7 @@ static bool gc_handle_announce_response_callback(Onion_Client *onion_c, uint32_t
  *
  * Returns the number of relays successfully added.
  */
-static uint32_t add_gc_tcp_relays_from_announce(non_null() const GC_Chat *chat, non_null() GC_Connection *gconn, non_null() const GC_Announce *announce)
+static uint32_t add_gc_tcp_relays_from_announce(const GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn, const GC_Announce *_Nonnull announce)
 {
     uint32_t added_relays = 0;
 

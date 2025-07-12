@@ -30,17 +30,17 @@ struct Tox_Event_Dht_Nodes_Response {
     uint16_t port;
 };
 
-static bool tox_event_dht_nodes_response_set_public_key(non_null() Tox_Event_Dht_Nodes_Response *dht_nodes_response, non_null() const uint8_t public_key[TOX_PUBLIC_KEY_SIZE])
+static bool tox_event_dht_nodes_response_set_public_key(Tox_Event_Dht_Nodes_Response *_Nonnull dht_nodes_response, const uint8_t public_key[TOX_PUBLIC_KEY_SIZE])
 {
     memcpy(dht_nodes_response->public_key, public_key, TOX_PUBLIC_KEY_SIZE);
     return true;
 }
-const uint8_t *tox_event_dht_nodes_response_get_public_key(const Tox_Event_Dht_Nodes_Response *dht_nodes_response)
+const uint8_t *_Nonnull tox_event_dht_nodes_response_get_public_key(const Tox_Event_Dht_Nodes_Response *dht_nodes_response)
 {
     return dht_nodes_response->public_key;
 }
 
-static bool tox_event_dht_nodes_response_set_ip(non_null() Tox_Event_Dht_Nodes_Response *dht_nodes_response, non_null() const char *ip, uint32_t ip_length, non_null() const Memory *mem)
+static bool tox_event_dht_nodes_response_set_ip(Tox_Event_Dht_Nodes_Response *_Nonnull dht_nodes_response, const char *_Nonnull ip, uint32_t ip_length, const Memory *_Nonnull mem)
 {
     if (dht_nodes_response->ip != nullptr) {
         mem_delete(mem, dht_nodes_response->ip);
@@ -68,7 +68,7 @@ const uint8_t *tox_event_dht_nodes_response_get_ip(const Tox_Event_Dht_Nodes_Res
     return dht_nodes_response->ip;
 }
 
-static bool tox_event_dht_nodes_response_set_port(non_null() Tox_Event_Dht_Nodes_Response *dht_nodes_response, uint16_t port)
+static bool tox_event_dht_nodes_response_set_port(Tox_Event_Dht_Nodes_Response *_Nonnull dht_nodes_response, uint16_t port)
 {
     dht_nodes_response->port = port;
     return true;
@@ -78,7 +78,7 @@ uint16_t tox_event_dht_nodes_response_get_port(const Tox_Event_Dht_Nodes_Respons
     return dht_nodes_response->port;
 }
 
-static void tox_event_dht_nodes_response_construct(non_null() Tox_Event_Dht_Nodes_Response *dht_nodes_response)
+static void tox_event_dht_nodes_response_construct(Tox_Event_Dht_Nodes_Response *_Nonnull dht_nodes_response)
 {
     *dht_nodes_response = (Tox_Event_Dht_Nodes_Response) {
         {
@@ -86,7 +86,7 @@ static void tox_event_dht_nodes_response_construct(non_null() Tox_Event_Dht_Node
         }
     };
 }
-static void tox_event_dht_nodes_response_destruct(non_null() Tox_Event_Dht_Nodes_Response *dht_nodes_response, non_null() const Memory *mem)
+static void tox_event_dht_nodes_response_destruct(Tox_Event_Dht_Nodes_Response *_Nonnull dht_nodes_response, const Memory *_Nonnull mem)
 {
     mem_delete(mem, dht_nodes_response->ip);
 }
@@ -100,7 +100,7 @@ bool tox_event_dht_nodes_response_pack(
            && bin_pack_u16(bp, event->port);
 }
 
-static bool tox_event_dht_nodes_response_unpack_into(non_null() Tox_Event_Dht_Nodes_Response *event, non_null() Bin_Unpack *bu)
+static bool tox_event_dht_nodes_response_unpack_into(Tox_Event_Dht_Nodes_Response *_Nonnull event, Bin_Unpack *_Nonnull bu)
 {
     if (!bin_unpack_array_fixed(bu, 3, nullptr)) {
         return false;
@@ -138,7 +138,7 @@ void tox_event_dht_nodes_response_free(Tox_Event_Dht_Nodes_Response *dht_nodes_r
     mem_delete(mem, dht_nodes_response);
 }
 
-static Tox_Event_Dht_Nodes_Response *tox_events_add_dht_nodes_response(non_null() Tox_Events *events, non_null() const Memory *mem)
+static Tox_Event_Dht_Nodes_Response *tox_events_add_dht_nodes_response(Tox_Events *_Nonnull events, const Memory *_Nonnull mem)
 {
     Tox_Event_Dht_Nodes_Response *const dht_nodes_response = tox_event_dht_nodes_response_new(mem);
 
@@ -169,7 +169,7 @@ bool tox_event_dht_nodes_response_unpack(
     return tox_event_dht_nodes_response_unpack_into(*event, bu);
 }
 
-static Tox_Event_Dht_Nodes_Response *tox_event_dht_nodes_response_alloc(non_null() void *user_data)
+static Tox_Event_Dht_Nodes_Response *tox_event_dht_nodes_response_alloc(void *_Nonnull user_data)
 {
     Tox_Events_State *state = tox_events_alloc(user_data);
     assert(state != nullptr);

@@ -61,7 +61,7 @@ bool friend_is_valid(const Messenger *m, int32_t friendnumber)
  *
  * @retval -1 if mem_vrealloc fails.
  */
-static int realloc_friendlist(non_null() Messenger *m, uint32_t num)
+static int realloc_friendlist(Messenger *_Nonnull m, uint32_t num)
 {
     if (num == 0) {
         mem_delete(m->mem, m->friendlist);
@@ -136,25 +136,25 @@ void getaddress(const Messenger *m, uint8_t *address)
     memcpy(address + CRYPTO_PUBLIC_KEY_SIZE + sizeof(nospam), &checksum, sizeof(checksum));
 }
 
-static bool send_online_packet(non_null() const Messenger *m, int friendcon_id)
+static bool send_online_packet(const Messenger *_Nonnull m, int friendcon_id)
 {
     const uint8_t packet[1] = {PACKET_ID_ONLINE};
     return write_cryptpacket(m->net_crypto, friend_connection_crypt_connection_id(m->fr_c, friendcon_id), packet,
                              sizeof(packet), false) != -1;
 }
 
-static bool send_offline_packet(non_null() const Messenger *m, int friendcon_id)
+static bool send_offline_packet(const Messenger *_Nonnull m, int friendcon_id)
 {
     const uint8_t packet[1] = {PACKET_ID_OFFLINE};
     return write_cryptpacket(m->net_crypto, friend_connection_crypt_connection_id(m->fr_c, friendcon_id), packet,
                              sizeof(packet), false) != -1;
 }
 
-static int m_handle_status(non_null() void *object, int friendcon_id, bool status, nullable() void *userdata);
-static int m_handle_packet(non_null() void *object, int friendcon_id, non_null() const uint8_t *data, uint16_t length, nullable() void *userdata);
-static int m_handle_lossy_packet(non_null() void *object, int friendcon_id, non_null() const uint8_t *data, uint16_t length,
-                                 nullable() void *userdata);
-static int32_t init_new_friend(non_null() Messenger *m, non_null() const uint8_t *real_pk, uint8_t status)
+static int m_handle_status(void *_Nonnull object, int friendcon_id, bool status, void *_Nullable userdata);
+static int m_handle_packet(void *_Nonnull object, int friendcon_id, const uint8_t *_Nonnull data, uint16_t length, void *_Nullable userdata);
+static int m_handle_lossy_packet(void *_Nonnull object, int friendcon_id, const uint8_t *_Nonnull data, uint16_t length,
+                                 void *_Nullable userdata);
+static int32_t init_new_friend(Messenger *_Nonnull m, const uint8_t *_Nonnull real_pk, uint8_t status)
 {
     if (m->numfriends == UINT32_MAX) {
         LOGGER_ERROR(m->log, "Friend list full: we have more than 4 billion friends");
@@ -203,7 +203,7 @@ static int32_t init_new_friend(non_null() Messenger *m, non_null() const uint8_t
     return FAERR_NOMEM;
 }
 
-static int32_t m_add_friend_contact_norequest(non_null() Messenger *m, non_null() const uint8_t *real_pk)
+static int32_t m_add_friend_contact_norequest(Messenger *_Nonnull m, const uint8_t *_Nonnull real_pk)
 {
     if (getfriend_id(m, real_pk) != -1) {
         return FAERR_ALREADYSENT;
@@ -311,7 +311,7 @@ int32_t m_addfriend_norequest(Messenger *m, const uint8_t *real_pk)
     return m_add_friend_contact_norequest(m, real_pk);
 }
 
-static int clear_receipts(non_null() Messenger *m, int32_t friendnumber)
+static int clear_receipts(Messenger *_Nonnull m, int32_t friendnumber)
 {
     if (!m_friend_exists(m, friendnumber)) {
         return -1;
@@ -330,7 +330,7 @@ static int clear_receipts(non_null() Messenger *m, int32_t friendnumber)
     return 0;
 }
 
-static int add_receipt(non_null() Messenger *m, int32_t friendnumber, uint32_t packet_num, uint32_t msg_id)
+static int add_receipt(Messenger *_Nonnull m, int32_t friendnumber, uint32_t packet_num, uint32_t msg_id)
 {
     if (!m_friend_exists(m, friendnumber)) {
         return -1;
@@ -359,7 +359,7 @@ static int add_receipt(non_null() Messenger *m, int32_t friendnumber, uint32_t p
  * return -1 on failure.
  * return 0 if packet was received.
  */
-static int friend_received_packet(non_null() const Messenger *m, int32_t friendnumber, uint32_t number)
+static int friend_received_packet(const Messenger *_Nonnull m, int32_t friendnumber, uint32_t number)
 {
     if (!m_friend_exists(m, friendnumber)) {
         return -1;
@@ -416,7 +416,7 @@ void m_kill_group_connection(Messenger *m, const GC_Chat *chat)
     kill_friend_connection(m->fr_c, chat->friend_connection_id);
 }
 
-static int do_receipts(non_null() Messenger *m, int32_t friendnumber, nullable() void *userdata)
+static int do_receipts(Messenger *_Nonnull m, int32_t friendnumber, void *_Nullable userdata)
 {
     if (!m_friend_exists(m, friendnumber)) {
         return -1;
@@ -593,7 +593,7 @@ int m_send_message_generic(Messenger *m, int32_t friendnumber, uint8_t type, con
     return 0;
 }
 
-static bool write_cryptpacket_id(non_null() const Messenger *m, int32_t friendnumber, uint8_t packet_id, non_null() const uint8_t *data, uint32_t length, bool congestion_control)
+static bool write_cryptpacket_id(const Messenger *_Nonnull m, int32_t friendnumber, uint8_t packet_id, const uint8_t *_Nonnull data, uint32_t length, bool congestion_control)
 {
     if (!m_friend_exists(m, friendnumber)) {
         return false;
@@ -616,7 +616,7 @@ static bool write_cryptpacket_id(non_null() const Messenger *m, int32_t friendnu
 /** @brief Send a name packet to friendnumber.
  * length is the length with the NULL terminator.
  */
-static bool m_sendname(non_null() const Messenger *m, int32_t friendnumber, non_null() const uint8_t *name, uint16_t length)
+static bool m_sendname(const Messenger *_Nonnull m, int32_t friendnumber, const uint8_t *_Nonnull name, uint16_t length)
 {
     if (length > MAX_NAME_LENGTH) {
         return false;
@@ -755,7 +755,7 @@ int m_set_statusmessage(Messenger *m, const uint8_t *status, uint16_t length)
     return 0;
 }
 
-static bool userstatus_from_int(uint8_t status, non_null() Userstatus *out_enum)
+static bool userstatus_from_int(uint8_t status, Userstatus *_Nonnull out_enum)
 {
     switch (status) {
         case USERSTATUS_NONE: {
@@ -910,23 +910,23 @@ int m_get_istyping(const Messenger *m, int32_t friendnumber)
     return m->friendlist[friendnumber].is_typing ? 1 : 0;
 }
 
-static bool send_statusmessage(non_null() const Messenger *m, int32_t friendnumber, non_null() const uint8_t *status, uint16_t length)
+static bool send_statusmessage(const Messenger *_Nonnull m, int32_t friendnumber, const uint8_t *_Nonnull status, uint16_t length)
 {
     return write_cryptpacket_id(m, friendnumber, PACKET_ID_STATUSMESSAGE, status, length, false);
 }
 
-static bool send_userstatus(non_null() const Messenger *m, int32_t friendnumber, uint8_t status)
+static bool send_userstatus(const Messenger *_Nonnull m, int32_t friendnumber, uint8_t status)
 {
     return write_cryptpacket_id(m, friendnumber, PACKET_ID_USERSTATUS, &status, sizeof(status), false);
 }
 
-static bool send_user_istyping(non_null() const Messenger *m, int32_t friendnumber, bool is_typing)
+static bool send_user_istyping(const Messenger *_Nonnull m, int32_t friendnumber, bool is_typing)
 {
     const uint8_t typing = is_typing ? 1 : 0;
     return write_cryptpacket_id(m, friendnumber, PACKET_ID_TYPING, &typing, sizeof(typing), false);
 }
 
-static int set_friend_statusmessage(non_null() const Messenger *m, int32_t friendnumber, non_null() const uint8_t *status, uint16_t length)
+static int set_friend_statusmessage(const Messenger *_Nonnull m, int32_t friendnumber, const uint8_t *_Nonnull status, uint16_t length)
 {
     if (!m_friend_exists(m, friendnumber)) {
         return -1;
@@ -944,12 +944,12 @@ static int set_friend_statusmessage(non_null() const Messenger *m, int32_t frien
     return 0;
 }
 
-static void set_friend_userstatus(non_null() const Messenger *m, int32_t friendnumber, uint8_t status)
+static void set_friend_userstatus(const Messenger *_Nonnull m, int32_t friendnumber, uint8_t status)
 {
     userstatus_from_int(status, &m->friendlist[friendnumber].userstatus);
 }
 
-static void set_friend_typing(non_null() const Messenger *m, int32_t friendnumber, bool is_typing)
+static void set_friend_typing(const Messenger *_Nonnull m, int32_t friendnumber, bool is_typing)
 {
     m->friendlist[friendnumber].is_typing = is_typing;
 }
@@ -1001,7 +1001,7 @@ void m_callback_core_connection(Messenger *m, m_self_connection_status_cb *funct
     m->core_connection_change = function;
 }
 
-static void check_friend_tcp_udp(non_null() Messenger *m, int32_t friendnumber, nullable() void *userdata)
+static void check_friend_tcp_udp(Messenger *_Nonnull m, int32_t friendnumber, void *_Nullable userdata)
 {
     const int last_connection_udp_tcp = m->friendlist[friendnumber].last_connection_udp_tcp;
     const int ret = m_get_friend_connectionstatus(m, friendnumber);
@@ -1019,9 +1019,9 @@ static void check_friend_tcp_udp(non_null() Messenger *m, int32_t friendnumber, 
     m->friendlist[friendnumber].last_connection_udp_tcp = (Connection_Status)ret;
 }
 
-static void break_files(non_null() const Messenger *m, int32_t friendnumber);
+static void break_files(const Messenger *_Nonnull m, int32_t friendnumber);
 
-static void check_friend_connectionstatus(non_null() Messenger *m, int32_t friendnumber, uint8_t status, nullable() void *userdata)
+static void check_friend_connectionstatus(Messenger *_Nonnull m, int32_t friendnumber, uint8_t status, void *_Nullable userdata)
 {
     if (status == NOFRIEND) {
         return;
@@ -1047,7 +1047,7 @@ static void check_friend_connectionstatus(non_null() Messenger *m, int32_t frien
     }
 }
 
-static void set_friend_status(non_null() Messenger *m, int32_t friendnumber, uint8_t status, nullable() void *userdata)
+static void set_friend_status(Messenger *_Nonnull m, int32_t friendnumber, uint8_t status, void *_Nullable userdata)
 {
     check_friend_connectionstatus(m, friendnumber, status, userdata);
     m->friendlist[friendnumber].status = status;
@@ -1165,8 +1165,8 @@ int file_get_id(const Messenger *m, int32_t friendnumber, uint32_t filenumber, u
  * @retval 1 on success
  * @retval 0 on failure
  */
-static bool file_sendrequest(non_null() const Messenger *m, int32_t friendnumber, uint8_t filenumber, uint32_t file_type, uint64_t filesize, non_null() const uint8_t *file_id,
-                             non_null() const uint8_t *filename, uint16_t filename_length)
+static bool file_sendrequest(const Messenger *_Nonnull m, int32_t friendnumber, uint8_t filenumber, uint32_t file_type, uint64_t filesize, const uint8_t *_Nonnull file_id,
+                             const uint8_t *_Nonnull filename, uint16_t filename_length)
 {
     if (!m_friend_exists(m, friendnumber)) {
         return false;
@@ -1245,8 +1245,8 @@ long int new_filesender(const Messenger *m, int32_t friendnumber, uint32_t file_
     return i;
 }
 
-static bool send_file_control_packet(non_null() const Messenger *m, int32_t friendnumber, bool inbound, uint8_t filenumber,
-                                     uint8_t control_type, nullable() const uint8_t *data, uint16_t data_length)
+static bool send_file_control_packet(const Messenger *_Nonnull m, int32_t friendnumber, bool inbound, uint8_t filenumber,
+                                     uint8_t control_type, const uint8_t *_Nullable data, uint16_t data_length)
 {
     assert(data_length == 0 || data != nullptr);
     if ((unsigned int)(1 + 3 + data_length) > MAX_CRYPTO_DATA_SIZE) {
@@ -1444,7 +1444,7 @@ int file_seek(const Messenger *m, int32_t friendnumber, uint32_t filenumber, uin
 /** @return packet number on success.
  * @retval -1 on failure.
  */
-static int64_t send_file_data_packet(non_null() const Messenger *m, int32_t friendnumber, uint8_t filenumber, nullable() const uint8_t *data,
+static int64_t send_file_data_packet(const Messenger *_Nonnull m, int32_t friendnumber, uint8_t filenumber, const uint8_t *_Nullable data,
                                      uint16_t length)
 {
     assert(length == 0 || data != nullptr);
@@ -1555,7 +1555,7 @@ int send_file_data(const Messenger *m, int32_t friendnumber, uint32_t filenumber
  * @return true if there's still work to do, false otherwise.
  *
  */
-static bool do_all_filetransfers(non_null() Messenger *m, int32_t friendnumber, non_null() void *userdata, non_null() uint32_t *free_slots)
+static bool do_all_filetransfers(Messenger *_Nonnull m, int32_t friendnumber, void *_Nonnull userdata, uint32_t *_Nonnull free_slots)
 {
     Friend *const friendcon = &m->friendlist[friendnumber];
 
@@ -1622,7 +1622,7 @@ static bool do_all_filetransfers(non_null() Messenger *m, int32_t friendnumber, 
     return true;
 }
 
-static void do_reqchunk_filecb(non_null() Messenger *m, int32_t friendnumber, nullable() void *userdata)
+static void do_reqchunk_filecb(Messenger *_Nonnull m, int32_t friendnumber, void *_Nullable userdata)
 {
     // We're not currently doing any file transfers.
     if (m->friendlist[friendnumber].num_sending_files == 0) {
@@ -1676,7 +1676,7 @@ static void break_files(const Messenger *m, int32_t friendnumber)
     }
 }
 
-static struct File_Transfers *get_file_transfer(bool outbound, uint8_t filenumber, non_null() uint32_t *real_filenumber, non_null() Friend *sender)
+static struct File_Transfers *get_file_transfer(bool outbound, uint8_t filenumber, uint32_t *_Nonnull real_filenumber, Friend *_Nonnull sender)
 {
     struct File_Transfers *ft;
 
@@ -1698,8 +1698,8 @@ static struct File_Transfers *get_file_transfer(bool outbound, uint8_t filenumbe
 /** @retval -1 on failure
  * @retval 0 on success.
  */
-static int handle_filecontrol(non_null() Messenger *m, int32_t friendnumber, bool outbound, uint8_t filenumber,
-                              uint8_t control_type, non_null() const uint8_t *data, uint16_t length, nullable() void *userdata)
+static int handle_filecontrol(Messenger *_Nonnull m, int32_t friendnumber, bool outbound, uint8_t filenumber,
+                              uint8_t control_type, const uint8_t *_Nonnull data, uint16_t length, void *_Nullable userdata)
 {
     uint32_t real_filenumber;
     struct File_Transfers *ft = get_file_transfer(outbound, filenumber, &real_filenumber, &m->friendlist[friendnumber]);
@@ -1849,8 +1849,8 @@ int m_send_custom_lossy_packet(const Messenger *m, int32_t friendnumber, const u
     return 0;
 }
 
-static int handle_custom_lossless_packet(non_null() void *object, int friend_num, non_null() const uint8_t *packet, uint16_t length,
-        nullable() void *userdata)
+static int handle_custom_lossless_packet(void *_Nonnull object, int friend_num, const uint8_t *_Nonnull packet, uint16_t length,
+        void *_Nullable userdata)
 {
     Messenger *m = (Messenger *)object;
     if (!m_friend_exists(m, friend_num)) {
@@ -1904,7 +1904,7 @@ int send_custom_lossless_packet(const Messenger *m, int32_t friendnumber, const 
 }
 
 /** Function to filter out some friend requests*/
-static int friend_already_added(non_null() void *object, non_null() const uint8_t *public_key)
+static int friend_already_added(void *_Nonnull object, const uint8_t *_Nonnull public_key)
 {
     const Messenger *m = (const Messenger *)object;
 
@@ -1921,7 +1921,7 @@ static int friend_already_added(non_null() void *object, non_null() const uint8_
  * @param friendcon_id friendlist index of the timed-out friend
  * @param t time
  */
-static void check_friend_request_timed_out(non_null() Messenger *m, uint32_t friendcon_id, uint64_t t, nullable() void *userdata)
+static void check_friend_request_timed_out(Messenger *_Nonnull m, uint32_t friendcon_id, uint64_t t, void *_Nullable userdata)
 {
     Friend *f = &m->friendlist[friendcon_id];
     if (f->friendrequest_lastsent + f->friendrequest_timeout < t) {
@@ -1933,7 +1933,7 @@ static void check_friend_request_timed_out(non_null() Messenger *m, uint32_t fri
     }
 }
 
-static int m_handle_status(non_null() void *object, int friendcon_id, bool status, nullable() void *userdata)
+static int m_handle_status(void *_Nonnull object, int friendcon_id, bool status, void *_Nullable userdata)
 {
     Messenger *m = (Messenger *)object;
     if (status) { /* Went online. */
@@ -1947,7 +1947,7 @@ static int m_handle_status(non_null() void *object, int friendcon_id, bool statu
     return 0;
 }
 
-static int m_handle_packet_offline(non_null() Messenger *m, const int friendcon_id, non_null() const uint8_t *data, const uint16_t data_length, nullable() void *userdata)
+static int m_handle_packet_offline(Messenger *_Nonnull m, const int friendcon_id, const uint8_t *_Nonnull data, const uint16_t data_length, void *_Nullable userdata)
 {
     if (data_length == 0) {
         set_friend_status(m, friendcon_id, FRIEND_CONFIRMED, userdata);
@@ -1956,7 +1956,7 @@ static int m_handle_packet_offline(non_null() Messenger *m, const int friendcon_
     return 0;
 }
 
-static int m_handle_packet_nickname(non_null() Messenger *m, const int friendcon_id, non_null() const uint8_t *data, const uint16_t data_length, nullable() void *userdata)
+static int m_handle_packet_nickname(Messenger *_Nonnull m, const int friendcon_id, const uint8_t *_Nonnull data, const uint16_t data_length, void *_Nullable userdata)
 {
     if (data_length > MAX_NAME_LENGTH) {
         return 0;
@@ -1978,7 +1978,7 @@ static int m_handle_packet_nickname(non_null() Messenger *m, const int friendcon
     return 0;
 }
 
-static int m_handle_packet_statusmessage(non_null() Messenger *m, const int friendcon_id, non_null() const uint8_t *data, const uint16_t data_length, nullable() void *userdata)
+static int m_handle_packet_statusmessage(Messenger *_Nonnull m, const int friendcon_id, const uint8_t *_Nonnull data, const uint16_t data_length, void *_Nullable userdata)
 {
     if (data_length > MAX_STATUSMESSAGE_LENGTH) {
         return 0;
@@ -1998,7 +1998,7 @@ static int m_handle_packet_statusmessage(non_null() Messenger *m, const int frie
     return 0;
 }
 
-static int m_handle_packet_userstatus(non_null() Messenger *m, const int friendcon_id, non_null() const uint8_t *data, const uint16_t data_length, nullable() void *userdata)
+static int m_handle_packet_userstatus(Messenger *_Nonnull m, const int friendcon_id, const uint8_t *_Nonnull data, const uint16_t data_length, void *_Nullable userdata)
 {
     if (data_length != 1) {
         return 0;
@@ -2018,7 +2018,7 @@ static int m_handle_packet_userstatus(non_null() Messenger *m, const int friendc
     return 0;
 }
 
-static int m_handle_packet_typing(non_null() Messenger *m, const int friendcon_id, non_null() const uint8_t *data, const uint16_t data_length, nullable() void *userdata)
+static int m_handle_packet_typing(Messenger *_Nonnull m, const int friendcon_id, const uint8_t *_Nonnull data, const uint16_t data_length, void *_Nullable userdata)
 {
     if (data_length != 1) {
         return 0;
@@ -2035,8 +2035,8 @@ static int m_handle_packet_typing(non_null() Messenger *m, const int friendcon_i
     return 0;
 }
 
-static int m_handle_packet_message(non_null() Messenger *m, const int friendcon_id, non_null() const uint8_t *data, const uint16_t data_length, const Message_Type message_type,
-                                   nullable() void *userdata)
+static int m_handle_packet_message(Messenger *_Nonnull m, const int friendcon_id, const uint8_t *_Nonnull data, const uint16_t data_length, const Message_Type message_type,
+                                   void *_Nullable userdata)
 {
     if (data_length == 0) {
         return 0;
@@ -2057,7 +2057,7 @@ static int m_handle_packet_message(non_null() Messenger *m, const int friendcon_
     return 0;
 }
 
-static int m_handle_packet_invite_conference(non_null() Messenger *m, const int friendcon_id, non_null() const uint8_t *data, const uint16_t data_length, nullable() void *userdata)
+static int m_handle_packet_invite_conference(Messenger *_Nonnull m, const int friendcon_id, const uint8_t *_Nonnull data, const uint16_t data_length, void *_Nullable userdata)
 {
     if (data_length == 0) {
         return 0;
@@ -2070,7 +2070,7 @@ static int m_handle_packet_invite_conference(non_null() Messenger *m, const int 
     return 0;
 }
 
-static int m_handle_packet_file_sendrequest(non_null() Messenger *m, const int friendcon_id, non_null() const uint8_t *data, const uint16_t data_length, nullable() void *userdata)
+static int m_handle_packet_file_sendrequest(Messenger *_Nonnull m, const int friendcon_id, const uint8_t *_Nonnull data, const uint16_t data_length, void *_Nullable userdata)
 {
     const unsigned int head_length = 1 + sizeof(uint32_t) + sizeof(uint64_t) + FILE_ID_LENGTH;
     if (data_length < head_length) {
@@ -2133,7 +2133,7 @@ static int m_handle_packet_file_sendrequest(non_null() Messenger *m, const int f
     return 0;
 }
 
-static int m_handle_packet_file_control(non_null() Messenger *m, const int friendcon_id, non_null() const uint8_t *data, const uint16_t data_length, nullable() void *userdata)
+static int m_handle_packet_file_control(Messenger *_Nonnull m, const int friendcon_id, const uint8_t *_Nonnull data, const uint16_t data_length, void *_Nullable userdata)
 {
     if (data_length < 3) {
         return 0;
@@ -2163,7 +2163,7 @@ static int m_handle_packet_file_control(non_null() Messenger *m, const int frien
     return 0;
 }
 
-static int m_handle_packet_file_data(non_null() Messenger *m, const int friendcon_id, non_null() const uint8_t *data, const uint16_t data_length, nullable() void *userdata)
+static int m_handle_packet_file_data(Messenger *_Nonnull m, const int friendcon_id, const uint8_t *_Nonnull data, const uint16_t data_length, void *_Nullable userdata)
 {
     if (data_length < 1) {
         return 0;
@@ -2228,7 +2228,7 @@ static int m_handle_packet_file_data(non_null() Messenger *m, const int friendco
     return 0;
 }
 
-static int m_handle_packet_invite_groupchat(non_null() Messenger *m, const int friendcon_id, non_null() const uint8_t *data, const uint16_t data_length, nullable() void *userdata)
+static int m_handle_packet_invite_groupchat(Messenger *_Nonnull m, const int friendcon_id, const uint8_t *_Nonnull data, const uint16_t data_length, void *_Nullable userdata)
 {
     // first two bytes are messenger packet type and group invite type
     if (data_length < 2 + GC_JOIN_DATA_LENGTH) {
@@ -2253,7 +2253,7 @@ static int m_handle_packet_invite_groupchat(non_null() Messenger *m, const int f
     return 0;
 }
 
-static int m_handle_packet(non_null() void *object, int friendcon_id, non_null() const uint8_t *data, uint16_t length, nullable() void *userdata)
+static int m_handle_packet(void *_Nonnull object, int friendcon_id, const uint8_t *_Nonnull data, uint16_t length, void *_Nullable userdata)
 {
     Messenger *m = (Messenger *)object;
     if (length == 0) {
@@ -2306,7 +2306,7 @@ static int m_handle_packet(non_null() void *object, int friendcon_id, non_null()
     return handle_custom_lossless_packet(object, friendcon_id, data, length, userdata);
 }
 
-static void do_friends(non_null() Messenger *m, nullable() void *userdata)
+static void do_friends(Messenger *_Nonnull m, void *_Nullable userdata)
 {
     const uint64_t temp_time = mono_time_get(m->mono_time);
     for (uint32_t i = 0; i < m->numfriends; ++i) {
@@ -2363,7 +2363,7 @@ static void do_friends(non_null() Messenger *m, nullable() void *userdata)
     }
 }
 
-static void m_connection_status_callback(non_null() Messenger *m, nullable() void *userdata)
+static void m_connection_status_callback(Messenger *_Nonnull m, void *_Nullable userdata)
 {
     const Onion_Connection_Status conn_status = onion_connection_status(m->onion_c);
     if (conn_status != m->last_connection_status) {
@@ -2379,7 +2379,7 @@ static void m_connection_status_callback(non_null() Messenger *m, nullable() voi
 
 #define IDSTRING_LEN (CRYPTO_PUBLIC_KEY_SIZE * 2 + 1)
 /** id_str should be of length at least IDSTRING_LEN */
-static char *id_to_string(non_null() const uint8_t *pk, non_null() char *id_str, size_t length)
+static char *id_to_string(const uint8_t *_Nonnull pk, char *_Nonnull id_str, size_t length)
 {
     if (length < IDSTRING_LEN) {
         snprintf(id_str, length, "Bad buf length");
@@ -2421,7 +2421,7 @@ uint32_t messenger_run_interval(const Messenger *m)
  *
  * @retval true if success.
  */
-static bool self_announce_group(non_null() const Messenger *m, non_null() GC_Chat *chat, non_null() Onion_Friend *onion_friend)
+static bool self_announce_group(const Messenger *_Nonnull m, GC_Chat *_Nonnull chat, Onion_Friend *_Nonnull onion_friend)
 {
     GC_Public_Announce announce = {{{{{0}}}}};
 
@@ -2472,7 +2472,7 @@ static bool self_announce_group(non_null() const Messenger *m, non_null() GC_Cha
     return true;
 }
 
-static void do_gc_onion_friends(non_null() const Messenger *m)
+static void do_gc_onion_friends(const Messenger *_Nonnull m)
 {
     const uint16_t num_friends = onion_get_friend_count(m->onion_c);
 
@@ -2694,7 +2694,7 @@ static uint32_t friend_size(void)
     return data;
 }
 
-static uint8_t *friend_save(non_null() const struct Saved_Friend *temp, non_null() uint8_t *data)
+static uint8_t *friend_save(const struct Saved_Friend *_Nonnull temp, uint8_t *_Nonnull data)
 {
 #define VALUE_MEMBER(data, name)           \
     do {                                   \
@@ -2730,7 +2730,7 @@ static uint8_t *friend_save(non_null() const struct Saved_Friend *temp, non_null
     return data;
 }
 
-static const uint8_t *friend_load(non_null() struct Saved_Friend *temp, non_null() const uint8_t *data)
+static const uint8_t *friend_load(struct Saved_Friend *_Nonnull temp, const uint8_t *_Nonnull data)
 {
 #define VALUE_MEMBER(data, name)           \
     do {                                   \
@@ -2766,7 +2766,7 @@ static const uint8_t *friend_load(non_null() struct Saved_Friend *temp, non_null
     return data;
 }
 
-static uint32_t m_state_plugins_size(non_null() const Messenger *m)
+static uint32_t m_state_plugins_size(const Messenger *_Nonnull m)
 {
     const uint32_t size32 = sizeof(uint32_t);
     const uint32_t sizesubhead = size32 * 2;
@@ -2811,7 +2811,7 @@ bool m_register_state_plugin(Messenger *m, State_Type type, m_state_size_cb *siz
     return true;
 }
 
-static uint32_t m_plugin_size(non_null() const Messenger *m, State_Type type)
+static uint32_t m_plugin_size(const Messenger *_Nonnull m, State_Type type)
 {
     for (uint8_t i = 0; i < m->options.state_plugins_length; ++i) {
         const Messenger_State_Plugin plugin = m->options.state_plugins[i];
@@ -2844,12 +2844,12 @@ uint8_t *messenger_save(const Messenger *m, uint8_t *data)
 }
 
 // nospam state plugin
-static uint32_t nospam_keys_size(non_null() const Messenger *m)
+static uint32_t nospam_keys_size(const Messenger *_Nonnull m)
 {
     return sizeof(uint32_t) + CRYPTO_PUBLIC_KEY_SIZE + CRYPTO_SECRET_KEY_SIZE;
 }
 
-static State_Load_Status load_nospam_keys(non_null() Messenger *m, non_null() const uint8_t *data, uint32_t length)
+static State_Load_Status load_nospam_keys(Messenger *_Nonnull m, const uint8_t *_Nonnull data, uint32_t length)
 {
     if (length != m_plugin_size(m, STATE_TYPE_NOSPAMKEYS)) {
         return STATE_LOAD_STATUS_ERROR;
@@ -2868,7 +2868,7 @@ static State_Load_Status load_nospam_keys(non_null() Messenger *m, non_null() co
     return STATE_LOAD_STATUS_CONTINUE;
 }
 
-static uint8_t *save_nospam_keys(non_null() const Messenger *m, non_null() uint8_t *data)
+static uint8_t *save_nospam_keys(const Messenger *_Nonnull m, uint8_t *_Nonnull data)
 {
     const uint32_t len = m_plugin_size(m, STATE_TYPE_NOSPAMKEYS);
     static_assert(sizeof(get_nospam(m->fr)) == sizeof(uint32_t), "nospam doesn't fit in a 32 bit int");
@@ -2881,12 +2881,12 @@ static uint8_t *save_nospam_keys(non_null() const Messenger *m, non_null() uint8
 }
 
 // DHT state plugin
-static uint32_t m_dht_size(non_null() const Messenger *m)
+static uint32_t m_dht_size(const Messenger *_Nonnull m)
 {
     return dht_size(m->dht);
 }
 
-static uint8_t *save_dht(non_null() const Messenger *m, non_null() uint8_t *data)
+static uint8_t *save_dht(const Messenger *_Nonnull m, uint8_t *_Nonnull data)
 {
     const uint32_t len = m_plugin_size(m, STATE_TYPE_DHT);
     data = state_write_section_header(data, STATE_COOKIE_TYPE, len, STATE_TYPE_DHT);
@@ -2895,19 +2895,19 @@ static uint8_t *save_dht(non_null() const Messenger *m, non_null() uint8_t *data
     return data;
 }
 
-static State_Load_Status m_dht_load(non_null() Messenger *m, non_null() const uint8_t *data, uint32_t length)
+static State_Load_Status m_dht_load(Messenger *_Nonnull m, const uint8_t *_Nonnull data, uint32_t length)
 {
     dht_load(m->dht, data, length); // TODO(endoffile78): Should we throw an error if dht_load fails?
     return STATE_LOAD_STATUS_CONTINUE;
 }
 
 // friendlist state plugin
-static uint32_t saved_friendslist_size(non_null() const Messenger *m)
+static uint32_t saved_friendslist_size(const Messenger *_Nonnull m)
 {
     return count_friendlist(m) * friend_size();
 }
 
-static uint8_t *friends_list_save(non_null() const Messenger *m, non_null() uint8_t *data)
+static uint8_t *friends_list_save(const Messenger *_Nonnull m, uint8_t *_Nonnull data)
 {
     const uint32_t len = m_plugin_size(m, STATE_TYPE_FRIENDS);
     data = state_write_section_header(data, STATE_COOKIE_TYPE, len, STATE_TYPE_FRIENDS);
@@ -2957,7 +2957,7 @@ static uint8_t *friends_list_save(non_null() const Messenger *m, non_null() uint
     return data;
 }
 
-static State_Load_Status friends_list_load(non_null() Messenger *m, non_null() const uint8_t *data, uint32_t length)
+static State_Load_Status friends_list_load(Messenger *_Nonnull m, const uint8_t *_Nonnull data, uint32_t length)
 {
     const uint32_t l_friend_size = friend_size();
 
@@ -3000,7 +3000,7 @@ static State_Load_Status friends_list_load(non_null() Messenger *m, non_null() c
     return STATE_LOAD_STATUS_CONTINUE;
 }
 
-static void pack_groupchats(non_null() const GC_Session *c, non_null() Bin_Pack *bp)
+static void pack_groupchats(const GC_Session *_Nonnull c, Bin_Pack *_Nonnull bp)
 {
     assert(bp != nullptr && c != nullptr);
     bin_pack_array(bp, gc_count_groups(c));
@@ -3016,20 +3016,20 @@ static void pack_groupchats(non_null() const GC_Session *c, non_null() Bin_Pack 
     }
 }
 
-static bool pack_groupchats_handler(non_null() const void *obj, non_null() const Logger *logger, non_null() Bin_Pack *bp)
+static bool pack_groupchats_handler(const void *_Nonnull obj, const Logger *_Nonnull logger, Bin_Pack *_Nonnull bp)
 {
     const GC_Session *session = (const GC_Session *)obj;
     pack_groupchats(session, bp);
     return true;  // TODO(iphydf): Return bool from pack functions.
 }
 
-static uint32_t saved_groups_size(non_null() const Messenger *m)
+static uint32_t saved_groups_size(const Messenger *_Nonnull m)
 {
     const GC_Session *session = m->group_handler;
     return bin_pack_obj_size(pack_groupchats_handler, session, m->log);
 }
 
-static uint8_t *groups_save(non_null() const Messenger *m, non_null() uint8_t *data)
+static uint8_t *groups_save(const Messenger *_Nonnull m, uint8_t *_Nonnull data)
 {
     const GC_Session *c = m->group_handler;
 
@@ -3059,7 +3059,7 @@ static uint8_t *groups_save(non_null() const Messenger *m, non_null() uint8_t *d
     return data;
 }
 
-static bool handle_groups_load(non_null() void *obj, non_null() Bin_Unpack *bu)
+static bool handle_groups_load(void *_Nonnull obj, Bin_Unpack *_Nonnull bu)
 {
     Messenger *m = (Messenger *)obj;
 
@@ -3086,7 +3086,7 @@ static bool handle_groups_load(non_null() void *obj, non_null() Bin_Unpack *bu)
     return true;
 }
 
-static State_Load_Status groups_load(non_null() Messenger *m, non_null() const uint8_t *data, uint32_t length)
+static State_Load_Status groups_load(Messenger *_Nonnull m, const uint8_t *_Nonnull data, uint32_t length)
 {
     if (!bin_unpack_obj(m->mem, handle_groups_load, m, data, length)) {
         LOGGER_ERROR(m->log, "msgpack failed to unpack groupchats array");
@@ -3097,12 +3097,12 @@ static State_Load_Status groups_load(non_null() Messenger *m, non_null() const u
 }
 
 // name state plugin
-static uint32_t name_size(non_null() const Messenger *m)
+static uint32_t name_size(const Messenger *_Nonnull m)
 {
     return m->name_length;
 }
 
-static uint8_t *save_name(non_null() const Messenger *m, non_null() uint8_t *data)
+static uint8_t *save_name(const Messenger *_Nonnull m, uint8_t *_Nonnull data)
 {
     const uint32_t len = m_plugin_size(m, STATE_TYPE_NAME);
     data = state_write_section_header(data, STATE_COOKIE_TYPE, len, STATE_TYPE_NAME);
@@ -3111,7 +3111,7 @@ static uint8_t *save_name(non_null() const Messenger *m, non_null() uint8_t *dat
     return data;
 }
 
-static State_Load_Status load_name(non_null() Messenger *m, non_null() const uint8_t *data, uint32_t length)
+static State_Load_Status load_name(Messenger *_Nonnull m, const uint8_t *_Nonnull data, uint32_t length)
 {
     if (length > 0 && length <= MAX_NAME_LENGTH) {
         setname(m, data, length);
@@ -3121,12 +3121,12 @@ static State_Load_Status load_name(non_null() Messenger *m, non_null() const uin
 }
 
 // status message state plugin
-static uint32_t status_message_size(non_null() const Messenger *m)
+static uint32_t status_message_size(const Messenger *_Nonnull m)
 {
     return m->statusmessage_length;
 }
 
-static uint8_t *save_status_message(non_null() const Messenger *m, non_null() uint8_t *data)
+static uint8_t *save_status_message(const Messenger *_Nonnull m, uint8_t *_Nonnull data)
 {
     const uint32_t len = m_plugin_size(m, STATE_TYPE_STATUSMESSAGE);
     data = state_write_section_header(data, STATE_COOKIE_TYPE, len, STATE_TYPE_STATUSMESSAGE);
@@ -3135,7 +3135,7 @@ static uint8_t *save_status_message(non_null() const Messenger *m, non_null() ui
     return data;
 }
 
-static State_Load_Status load_status_message(non_null() Messenger *m, non_null() const uint8_t *data, uint32_t length)
+static State_Load_Status load_status_message(Messenger *_Nonnull m, const uint8_t *_Nonnull data, uint32_t length)
 {
     if (length > 0 && length <= MAX_STATUSMESSAGE_LENGTH) {
         m_set_statusmessage(m, data, length);
@@ -3145,12 +3145,12 @@ static State_Load_Status load_status_message(non_null() Messenger *m, non_null()
 }
 
 // status state plugin
-static uint32_t status_size(non_null() const Messenger *m)
+static uint32_t status_size(const Messenger *_Nonnull m)
 {
     return 1;
 }
 
-static uint8_t *save_status(non_null() const Messenger *m, non_null() uint8_t *data)
+static uint8_t *save_status(const Messenger *_Nonnull m, uint8_t *_Nonnull data)
 {
     const uint32_t len = m_plugin_size(m, STATE_TYPE_STATUS);
     data = state_write_section_header(data, STATE_COOKIE_TYPE, len, STATE_TYPE_STATUS);
@@ -3159,7 +3159,7 @@ static uint8_t *save_status(non_null() const Messenger *m, non_null() uint8_t *d
     return data;
 }
 
-static State_Load_Status load_status(non_null() Messenger *m, non_null() const uint8_t *data, uint32_t length)
+static State_Load_Status load_status(Messenger *_Nonnull m, const uint8_t *_Nonnull data, uint32_t length)
 {
     if (length == 1) {
         m_set_userstatus(m, *data);
@@ -3169,12 +3169,12 @@ static State_Load_Status load_status(non_null() Messenger *m, non_null() const u
 }
 
 // TCP Relay state plugin
-static uint32_t tcp_relay_size(non_null() const Messenger *m)
+static uint32_t tcp_relay_size(const Messenger *_Nonnull m)
 {
     return NUM_SAVED_TCP_RELAYS * packed_node_size(net_family_tcp_ipv6());
 }
 
-static uint8_t *save_tcp_relays(non_null() const Messenger *m, non_null() uint8_t *data)
+static uint8_t *save_tcp_relays(const Messenger *_Nonnull m, uint8_t *_Nonnull data)
 {
     Node_format relays[NUM_SAVED_TCP_RELAYS] = {{{0}}};
     uint8_t *temp_data = data;
@@ -3198,7 +3198,7 @@ static uint8_t *save_tcp_relays(non_null() const Messenger *m, non_null() uint8_
     return data;
 }
 
-static State_Load_Status load_tcp_relays(non_null() Messenger *m, non_null() const uint8_t *data, uint32_t length)
+static State_Load_Status load_tcp_relays(Messenger *_Nonnull m, const uint8_t *_Nonnull data, uint32_t length)
 {
     if (length > 0) {
         const int num = unpack_nodes(m->loaded_relays, NUM_SAVED_TCP_RELAYS, nullptr, data, length, true);
@@ -3216,12 +3216,12 @@ static State_Load_Status load_tcp_relays(non_null() Messenger *m, non_null() con
 }
 
 // path node state plugin
-static uint32_t path_node_size(non_null() const Messenger *m)
+static uint32_t path_node_size(const Messenger *_Nonnull m)
 {
     return NUM_SAVED_PATH_NODES * packed_node_size(net_family_tcp_ipv6());
 }
 
-static uint8_t *save_path_nodes(non_null() const Messenger *m, non_null() uint8_t *data)
+static uint8_t *save_path_nodes(const Messenger *_Nonnull m, uint8_t *_Nonnull data)
 {
     Node_format nodes[NUM_SAVED_PATH_NODES] = {{{0}}};
     uint8_t *temp_data = data;
@@ -3238,7 +3238,7 @@ static uint8_t *save_path_nodes(non_null() const Messenger *m, non_null() uint8_
     return data;
 }
 
-static State_Load_Status load_path_nodes(non_null() Messenger *m, non_null() const uint8_t *data, uint32_t length)
+static State_Load_Status load_path_nodes(Messenger *_Nonnull m, const uint8_t *_Nonnull data, uint32_t length)
 {
     if (length > 0) {
         Node_format nodes[NUM_SAVED_PATH_NODES];
@@ -3256,7 +3256,7 @@ static State_Load_Status load_path_nodes(non_null() Messenger *m, non_null() con
     return STATE_LOAD_STATUS_CONTINUE;
 }
 
-static void m_register_default_plugins(non_null() Messenger *m)
+static void m_register_default_plugins(Messenger *_Nonnull m)
 {
     m_register_state_plugin(m, STATE_TYPE_NOSPAMKEYS, nospam_keys_size, load_nospam_keys, save_nospam_keys);
     m_register_state_plugin(m, STATE_TYPE_DHT, m_dht_size, m_dht_load, save_dht);
@@ -3339,7 +3339,7 @@ uint32_t copy_friendlist(Messenger const *m, uint32_t *out_list, uint32_t list_s
 
 static fr_friend_request_cb m_handle_friend_request;
 static void m_handle_friend_request(
-    non_null() void *object, non_null() const uint8_t *public_key, non_null() const uint8_t *message, size_t length, nullable() void *user_data)
+    void *_Nonnull object, const uint8_t *_Nonnull public_key, const uint8_t *_Nonnull message, size_t length, void *_Nullable user_data)
 {
     Messenger *m = (Messenger *)object;
     assert(m != nullptr);

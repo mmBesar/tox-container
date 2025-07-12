@@ -25,8 +25,8 @@
  */
 #define SMALL_ARRAY_THRESHOLD 16
 
-static void merge_sort_merge_back(non_null() void *arr, non_null() const void *l_arr, uint32_t l_arr_size, non_null() const void *r_arr, uint32_t r_arr_size, uint32_t left_start,
-                                  non_null() const void *object, non_null() const Sort_Funcs *funcs)
+static void merge_sort_merge_back(void *_Nonnull arr, const void *_Nonnull l_arr, uint32_t l_arr_size, const void *_Nonnull r_arr, uint32_t r_arr_size, uint32_t left_start,
+                                  const void *_Nonnull object, const Sort_Funcs *_Nonnull funcs)
 {
     uint32_t li = 0;
     uint32_t ri = 0;
@@ -62,7 +62,7 @@ static void merge_sort_merge_back(non_null() void *arr, non_null() const void *l
 }
 
 /** Function to merge the two haves `arr[left_start..mid]` and `arr[mid+1..right_end]` of array `arr[]`. */
-static void merge_sort_merge(non_null() void *arr, uint32_t left_start, uint32_t mid, uint32_t right_end, non_null() void *tmp, non_null() const void *object, non_null() const Sort_Funcs *funcs)
+static void merge_sort_merge(void *_Nonnull arr, uint32_t left_start, uint32_t mid, uint32_t right_end, void *_Nonnull tmp, const void *_Nonnull object, const Sort_Funcs *_Nonnull funcs)
 {
     const uint32_t l_arr_size = mid - left_start + 1;
     const uint32_t r_arr_size = right_end - mid;
@@ -88,7 +88,7 @@ static void merge_sort_merge(non_null() void *arr, uint32_t left_start, uint32_t
     merge_sort_merge_back(arr, l_arr, l_arr_size, r_arr, r_arr_size, left_start, object, funcs);
 }
 
-static void insertion_sort_step(non_null() void *arr, non_null() void *tmp, uint32_t i, non_null() const void *object, non_null() const Sort_Funcs *funcs)
+static void insertion_sort_step(void *_Nonnull arr, void *_Nonnull tmp, uint32_t i, const void *_Nonnull object, const Sort_Funcs *_Nonnull funcs)
 {
     funcs->set_callback(tmp, 0, funcs->get_callback(arr, i));
     uint32_t j = i;
@@ -104,14 +104,14 @@ static void insertion_sort_step(non_null() void *arr, non_null() void *tmp, uint
     funcs->set_callback(arr, j, tmp);
 }
 
-static void insertion_sort_with_buf(non_null() void *arr, uint32_t arr_size, non_null() void *tmp, uint32_t tmp_size, non_null() const void *object, non_null() const Sort_Funcs *funcs)
+static void insertion_sort_with_buf(void *_Nonnull arr, uint32_t arr_size, void *_Nonnull tmp, uint32_t tmp_size, const void *_Nonnull object, const Sort_Funcs *_Nonnull funcs)
 {
     for (uint32_t i = 1; i < arr_size; ++i) {
         insertion_sort_step(arr, tmp, i, object, funcs);
     }
 }
 
-static bool insertion_sort(non_null() void *arr, uint32_t arr_size, non_null() const void *object, non_null() const Sort_Funcs *funcs)
+static bool insertion_sort(void *_Nonnull arr, uint32_t arr_size, const void *_Nonnull object, const Sort_Funcs *_Nonnull funcs)
 {
     void *tmp = funcs->alloc_callback(object, 1);
 

@@ -30,7 +30,7 @@ struct Tox_Event_Group_Peer_Name {
     uint32_t name_length;
 };
 
-static void tox_event_group_peer_name_set_group_number(non_null() Tox_Event_Group_Peer_Name *group_peer_name, uint32_t group_number)
+static void tox_event_group_peer_name_set_group_number(Tox_Event_Group_Peer_Name *_Nonnull group_peer_name, uint32_t group_number)
 {
     assert(group_peer_name != nullptr);
     group_peer_name->group_number = group_number;
@@ -41,7 +41,7 @@ uint32_t tox_event_group_peer_name_get_group_number(const Tox_Event_Group_Peer_N
     return group_peer_name->group_number;
 }
 
-static void tox_event_group_peer_name_set_peer_id(non_null() Tox_Event_Group_Peer_Name *group_peer_name, uint32_t peer_id)
+static void tox_event_group_peer_name_set_peer_id(Tox_Event_Group_Peer_Name *_Nonnull group_peer_name, uint32_t peer_id)
 {
     assert(group_peer_name != nullptr);
     group_peer_name->peer_id = peer_id;
@@ -52,8 +52,8 @@ uint32_t tox_event_group_peer_name_get_peer_id(const Tox_Event_Group_Peer_Name *
     return group_peer_name->peer_id;
 }
 
-static bool tox_event_group_peer_name_set_name(non_null() Tox_Event_Group_Peer_Name *group_peer_name,
-        nullable() const uint8_t *name, uint32_t name_length)
+static bool tox_event_group_peer_name_set_name(Tox_Event_Group_Peer_Name *_Nonnull group_peer_name,
+        const uint8_t *_Nullable name, uint32_t name_length)
 {
     assert(group_peer_name != nullptr);
     if (group_peer_name->name != nullptr) {
@@ -89,13 +89,13 @@ const uint8_t *tox_event_group_peer_name_get_name(const Tox_Event_Group_Peer_Nam
     return group_peer_name->name;
 }
 
-static void tox_event_group_peer_name_construct(non_null() Tox_Event_Group_Peer_Name *group_peer_name)
+static void tox_event_group_peer_name_construct(Tox_Event_Group_Peer_Name *_Nonnull group_peer_name)
 {
     *group_peer_name = (Tox_Event_Group_Peer_Name) {
         0
     };
 }
-static void tox_event_group_peer_name_destruct(non_null() Tox_Event_Group_Peer_Name *group_peer_name, non_null() const Memory *mem)
+static void tox_event_group_peer_name_destruct(Tox_Event_Group_Peer_Name *_Nonnull group_peer_name, const Memory *_Nonnull mem)
 {
     free(group_peer_name->name);
 }
@@ -109,7 +109,7 @@ bool tox_event_group_peer_name_pack(
            && bin_pack_bin(bp, event->name, event->name_length);
 }
 
-static bool tox_event_group_peer_name_unpack_into(non_null() Tox_Event_Group_Peer_Name *event, non_null() Bin_Unpack *bu)
+static bool tox_event_group_peer_name_unpack_into(Tox_Event_Group_Peer_Name *_Nonnull event, Bin_Unpack *_Nonnull bu)
 {
     assert(event != nullptr);
     if (!bin_unpack_array_fixed(bu, 3, nullptr)) {
@@ -153,7 +153,7 @@ void tox_event_group_peer_name_free(Tox_Event_Group_Peer_Name *group_peer_name, 
     mem_delete(mem, group_peer_name);
 }
 
-static Tox_Event_Group_Peer_Name *tox_events_add_group_peer_name(non_null() Tox_Events *events, non_null() const Memory *mem)
+static Tox_Event_Group_Peer_Name *tox_events_add_group_peer_name(Tox_Events *_Nonnull events, const Memory *_Nonnull mem)
 {
     Tox_Event_Group_Peer_Name *const group_peer_name = tox_event_group_peer_name_new(mem);
 
@@ -186,7 +186,7 @@ bool tox_event_group_peer_name_unpack(
     return tox_event_group_peer_name_unpack_into(*event, bu);
 }
 
-static Tox_Event_Group_Peer_Name *tox_event_group_peer_name_alloc(non_null() void *user_data)
+static Tox_Event_Group_Peer_Name *tox_event_group_peer_name_alloc(void *_Nonnull user_data)
 {
     Tox_Events_State *state = tox_events_alloc(user_data);
     assert(state != nullptr);
