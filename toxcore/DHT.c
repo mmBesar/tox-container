@@ -535,7 +535,7 @@ static void update_client(const Logger *_Nonnull log, const Mono_Time *_Nonnull 
         Ip_Ntoa ip_str_from;
         Ip_Ntoa ip_str_to;
         LOGGER_TRACE(log, "coipil[%u]: switching ipv%d from %s:%u to %s:%u",
-                     index, ip_version,
+                     (unsigned int)index, ip_version,
                      net_ip_ntoa(&assoc->ip_port.ip, &ip_str_from),
                      net_ntohs(assoc->ip_port.port),
                      net_ip_ntoa(&ip_port->ip, &ip_str_to),
@@ -1512,7 +1512,7 @@ static int handle_nodes_response(void *_Nonnull object, const IP_Port *_Nonnull 
 /*----------------------------------------------------------------------------------*/
 /*------------------------END of packet handling functions--------------------------*/
 
-static uint32_t dht_friend_lock(DHT_Friend *_Nonnull const dht_friend, dht_ip_cb *_Nullable ip_callback,
+static uint32_t dht_friend_lock(DHT_Friend *_Nonnull dht_friend, dht_ip_cb *_Nullable ip_callback,
                                 void *_Nullable data, int32_t number)
 {
     // find first free slot
@@ -1540,7 +1540,7 @@ static uint32_t dht_friend_lock(DHT_Friend *_Nonnull const dht_friend, dht_ip_cb
     return lock_token;
 }
 
-static void dht_friend_unlock(DHT_Friend *_Nonnull const dht_friend, uint32_t lock_token)
+static void dht_friend_unlock(DHT_Friend *_Nonnull dht_friend, uint32_t lock_token)
 {
     // If this triggers, there was a double free
     assert((lock_token & dht_friend->lock_flags) > 0);
@@ -2494,7 +2494,7 @@ DHT *new_dht(const Logger *log, const Memory *mem, const Random *rng, const Netw
     DHT *const dht = (DHT *)mem_alloc(mem, sizeof(DHT));
 
     if (dht == nullptr) {
-        LOGGER_ERROR(log, "failed to allocate DHT struct (%ld bytes)", (unsigned long)sizeof(DHT));
+        LOGGER_ERROR(log, "failed to allocate DHT struct (%lu bytes)", (unsigned long)sizeof(DHT));
         return nullptr;
     }
 
@@ -2666,7 +2666,7 @@ void dht_save(const DHT *dht, uint8_t *data)
     Node_format *clients = (Node_format *)mem_valloc(dht->mem, MAX_SAVED_DHT_NODES, sizeof(Node_format));
 
     if (clients == nullptr) {
-        LOGGER_ERROR(dht->log, "could not allocate %u nodes", MAX_SAVED_DHT_NODES);
+        LOGGER_ERROR(dht->log, "could not allocate %u nodes", (unsigned int)MAX_SAVED_DHT_NODES);
         return;
     }
 
@@ -2762,7 +2762,7 @@ static State_Load_Status dht_load_state_callback(void *_Nonnull outer, const uin
             Node_format *nodes = (Node_format *)mem_valloc(dht->mem, MAX_SAVED_DHT_NODES, sizeof(Node_format));
 
             if (nodes == nullptr) {
-                LOGGER_ERROR(dht->log, "could not allocate %u nodes", MAX_SAVED_DHT_NODES);
+                LOGGER_ERROR(dht->log, "could not allocate %u nodes", (unsigned int)MAX_SAVED_DHT_NODES);
                 dht->loaded_num_nodes = 0;
                 break;
             }

@@ -40,7 +40,7 @@ static bool array_entry_is_empty(const GC_Message_Array_Entry *_Nonnull array_en
 }
 
 /** @brief Clears an array entry. */
-static void clear_array_entry(const Memory *_Nonnull mem, GC_Message_Array_Entry *_Nonnull const array_entry)
+static void clear_array_entry(const Memory *_Nonnull mem, GC_Message_Array_Entry *_Nonnull array_entry)
 {
     mem_delete(mem, array_entry->data);
 
@@ -505,7 +505,7 @@ int gcc_handle_received_message(const Logger *log, const Memory *mem, const Mono
  * Return true on success.
  */
 static bool process_recv_array_entry(const GC_Session *_Nonnull c, GC_Chat *_Nonnull chat, GC_Connection *_Nonnull gconn, uint32_t peer_number,
-                                     GC_Message_Array_Entry *_Nonnull const array_entry, void *_Nullable userdata)
+                                     GC_Message_Array_Entry *_Nonnull array_entry, void *_Nullable userdata)
 {
     uint8_t sender_pk[ENC_PUBLIC_KEY_SIZE];
     memcpy(sender_pk, get_enc_key(&gconn->addr.public_key), ENC_PUBLIC_KEY_SIZE);
