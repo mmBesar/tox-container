@@ -1,11 +1,11 @@
 name: Build and Publish Container
 
 on:
-  push:
-    branches: [ main ]
-    tags: [ 'v*' ]
-  repository_dispatch:
-    types: [new-release, nightly-build]
+  # push:
+  #   branches: [ main ]
+  #   tags: [ 'v*' ]
+  # repository_dispatch:
+  #   types: [new-release, nightly-build]
   workflow_dispatch:
 
 env:
