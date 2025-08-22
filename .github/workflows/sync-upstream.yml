@@ -1,0 +1,96 @@
+name: Sync Upstream and Build
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  sync-and-check:
+    runs-on: ubuntu-latest
+    outputs:
+      has-new-release: ${{ steps.check-release.outputs.has-new-release }}
+      new-tag: ${{ steps.check-release.outputs.new-tag }}
+      has-changes: ${{ steps.sync.outputs.has-changes }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/TokTok/c-toxcore.git || true
+          git fetch upstream
+
+      - name: Check for new releases
+        id: check-release
+        run: |
+          # Get latest release tag from upstream
+          LATEST_TAG=$(git ls-remote --tags upstream | grep -E 'refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/.*refs\/tags\///' | sort -V | tail -1)
+          
+          # Check if we already have this tag
+          if git rev-parse "refs/tags/$LATEST_TAG" >/dev/null 2>&1; then
+            echo "has-new-release=false" >> $GITHUB_OUTPUT
+            echo "No new release found"
+          else
+            echo "has-new-release=true" >> $GITHUB_OUTPUT
+            echo "new-tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+            echo "New release found: $LATEST_TAG"
+          fi
+
+      - name: Sync upstream to branch
+        id: sync
+        run: |
+          # Create or update upstream branch
+          git checkout -B upstream upstream/master
+          git push origin upstream --force
+          
+          # Check for changes in the last sync
+          LAST_COMMIT=$(git log --oneline -1 --format="%H")
+          if git diff HEAD~1 --quiet 2>/dev/null; then
+            echo "has-changes=false" >> $GITHUB_OUTPUT
+            echo "No changes detected"
+          else
+            echo "has-changes=true" >> $GITHUB_OUTPUT  
+            echo "Changes detected in upstream"
+          fi
+
+      - name: Create release tag if new version
+        if: steps.check-release.outputs.has-new-release == 'true'
+        run: |
+          TAG=${{ steps.check-release.outputs.new-tag }}
+          git checkout upstream
+          git tag $TAG
+          git push origin $TAG
+          echo "Created and pushed tag: $TAG"
+
+  trigger-stable-build:
+    needs: sync-and-check
+    if: needs.sync-and-check.outputs.has-new-release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger stable build
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          event-type: new-release
+          client-payload: '{"tag": "${{ needs.sync-and-check.outputs.new-tag }}"}'
+
+  trigger-nightly-build:
+    needs: sync-and-check  
+    if: needs.sync-and-check.outputs.has-changes == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger nightly build
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          event-type: nightly-build
