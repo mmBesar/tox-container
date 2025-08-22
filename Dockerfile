@@ -61,5 +61,5 @@ CMD ["/usr/local/bin/entrypoint.sh"]
 LABEL org.opencontainers.image.title="Tox Bootstrap Node" \
       org.opencontainers.image.description="Lightweight Tox bootstrap daemon for decentralized communication" \
       org.opencontainers.image.source="https://github.com/TokTok/c-toxcore" \
-      org.opencontainers.image.vendor="Your Name" \
+      org.opencontainers.image.vendor="mBesar" \
       org.opencontainers.image.licenses="GPL-3.0"
