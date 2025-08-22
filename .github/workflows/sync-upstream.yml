@@ -12,7 +12,7 @@ jobs:
     permissions:
       contents: write
       actions: write  # For workflow dispatch
-      workflows: write  # Required to sync .github/workflows files
+
     outputs:
       has-new-release: ${{ steps.check-release.outputs.has-new-release }}
       new-tag: ${{ steps.check-release.outputs.new-tag }}
