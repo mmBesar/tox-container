@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  tox-bootstrap:
+    image: ghcr.io/mmBesar/tox-container:latest
+    container_name: tox-bootstrap
+    restart: unless-stopped
+    
+    # Run as specified user
+    user: "1000:1000"
+    
+    # Network ports
+    ports:
+      - "33445:33445/tcp"
+      - "33445:33445/udp"
+    
+    # Persistent data volume
+    volumes:
+      - tox-data:/var/lib/tox-bootstrapd
+      
+    # Environment variables for customization
+    environment:
+      - TOX_PORT=33445
+      - TOX_LOG_LEVEL=info  
+      - TOX_MOTD=My Tox Bootstrap Node
+      
+    # Health check
+    healthcheck:
+      test: ["CMD", "netstat", "-tuln", "|", "grep", ":33445"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+      
+    # Resource limits (adjust for your Pi4)
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: '0.5'
+        reservations:
+          memory: 32M
+          cpus: '0.1'
+
+  # Optional: Watchtower for auto-updates
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=86400  # Check daily
+      - WATCHTOWER_INCLUDE_RESTARTING=true
+    command: tox-bootstrap  # Only watch the tox-bootstrap container
+
+volumes:
+  tox-data:
+    driver: local
+
+# Network (optional, uses default bridge)
+networks:
+  default:
+    name: tox-network
