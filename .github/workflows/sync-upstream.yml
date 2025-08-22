@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write  # For workflow dispatch
+      workflows: write  # Required to sync .github/workflows files
     outputs:
       has-new-release: ${{ steps.check-release.outputs.has-new-release }}
       new-tag: ${{ steps.check-release.outputs.new-tag }}
@@ -51,8 +53,14 @@ jobs:
       - name: Sync upstream to branch
         id: sync
         run: |
-          # Create or update upstream branch
+          # Create or update upstream branch  
           git checkout -B upstream upstream/master
+          
+          # Remove any .github/workflows to avoid permission issues
+          rm -rf .github/workflows/ || true
+          git add -A
+          git commit -m "Remove workflows from upstream sync" || true
+          
           git push origin upstream --force
           
           # Check for changes in the last sync
