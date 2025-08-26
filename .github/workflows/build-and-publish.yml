@@ -1,11 +1,16 @@
-name: Build and Publish
+name: Build and Publish Multi-Arch
 
 on:
-  # schedule:
-  #   - cron: '0 3 * * *'  # Daily at 3 AM UTC (1 hour after sync)
-  # push:
-  #   branches: [ main ]
-  #   tags: [ 'v*' ]
+  push:
+    paths:
+      - '.github/workflows/build.yml'
+      - 'Dockerfile'
+      - 'entrypoint.sh'
+  pull_request:
+    paths:
+      - '.github/workflows/build.yml'
+      - 'Dockerfile' 
+      - 'entrypoint.sh'
   workflow_dispatch:
     inputs:
       build_type:
@@ -20,7 +25,10 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   prepare:
@@ -28,8 +36,7 @@ jobs:
     outputs:
       build-type: ${{ steps.build-info.outputs.build-type }}
       version: ${{ steps.build-info.outputs.version }}
-      tags: ${{ steps.build-info.outputs.tags }}
-      image-name: ${{ steps.build-info.outputs.image-name }}
+      image_name: ${{ steps.build-info.outputs.image_name }}
     
     steps:
       - name: Checkout main branch
@@ -44,8 +51,8 @@ jobs:
       - name: Determine build type and version
         id: build-info
         run: |
-          IMAGE_NAME_LOWER=$(echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
-          echo "image-name=$IMAGE_NAME_LOWER" >> $GITHUB_OUTPUT
+          IMAGE_NAME_LOWER=$(echo "${{ env.REGISTRY }}/${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "image_name=$IMAGE_NAME_LOWER" >> $GITHUB_OUTPUT
           
           # Manual build type override
           if [ "${{ github.event.inputs.build_type }}" = "stable" ]; then
@@ -81,34 +88,33 @@ jobs:
           
           echo "build-type=$BUILD_TYPE" >> $GITHUB_OUTPUT
           
-          # Set version and tags based on build type
+          # Set version based on build type
           if [ "$BUILD_TYPE" = "stable" ]; then
             if [ -z "$VERSION" ]; then
               VERSION=$(git tag -l --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | head -1)
             fi
             echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "tags=${IMAGE_NAME_LOWER}:${VERSION},${IMAGE_NAME_LOWER}:latest" >> $GITHUB_OUTPUT
           else
             DATE=$(date +%Y%m%d)
             VERSION="nightly-$DATE"
             echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "tags=${IMAGE_NAME_LOWER}:nightly,${IMAGE_NAME_LOWER}:$VERSION" >> $GITHUB_OUTPUT
           fi
           
           echo "Build type: $BUILD_TYPE, Version: $VERSION"
 
-  build-multiarch:
+  # Build per architecture
+  build:
     needs: prepare
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+
     steps:
       - name: Checkout main branch
         uses: actions/checkout@v4
 
-      - name: Checkout upstream source  
+      - name: Checkout upstream source
         uses: actions/checkout@v4
         with:
           ref: upstream
@@ -127,20 +133,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push multi-arch
+      - name: Build and push ${{ matrix.arch }}
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
+          platforms: linux/${{ matrix.arch }}
           push: true
-          tags: ${{ needs.prepare.outputs.tags }}
-          platforms: linux/amd64,linux/arm64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: |
+            ${{ needs.prepare.outputs.image_name }}:${{ needs.prepare.outputs.version }}-${{ matrix.arch }}
+            ${{ needs.prepare.outputs.image_name }}:latest-${{ matrix.arch }}
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
           build-contexts: |
             upstream=./upstream
-          provenance: false
-          sbom: false
           labels: |
             org.opencontainers.image.title=Tox Bootstrap Node
             org.opencontainers.image.description=Lightweight Tox bootstrap daemon for decentralized communication
@@ -149,27 +155,58 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
 
+  # Create multi-arch manifests
+  manifest:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create multi-arch manifests
+        run: |
+          IMAGE=${{ needs.prepare.outputs.image_name }}
+          VERSION=${{ needs.prepare.outputs.version }}
+          
+          # Create versioned manifest
+          docker buildx imagetools create \
+            --tag $IMAGE:$VERSION \
+            $IMAGE:$VERSION-amd64 \
+            $IMAGE:$VERSION-arm64
+          
+          # Create latest/nightly manifest based on build type
+          if [ "${{ needs.prepare.outputs.build-type }}" = "stable" ]; then
+            docker buildx imagetools create \
+              --tag $IMAGE:latest \
+              $IMAGE:$VERSION-amd64 \
+              $IMAGE:$VERSION-arm64
+          else
+            docker buildx imagetools create \
+              --tag $IMAGE:nightly \
+              $IMAGE:$VERSION-amd64 \
+              $IMAGE:$VERSION-arm64
+          fi
+
       - name: Generate summary
         run: |
           echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "- **Build Type:** ${{ needs.prepare.outputs.build-type }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Version:** ${{ needs.prepare.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Image:** ${{ needs.prepare.outputs.image-name }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Tags:** ${{ needs.prepare.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Platforms:** linux/amd64, linux/arm64" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image:** ${{ needs.prepare.outputs.image_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Architectures:** linux/amd64, linux/arm64" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Usage" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "# Run with proper user namespace mapping" >> $GITHUB_STEP_SUMMARY
           echo "docker run -d -p 33445:33445 -p 33445:33445/udp \\" >> $GITHUB_STEP_SUMMARY
           echo "  -v tox-data:/var/lib/tox-bootstrapd \\" >> $GITHUB_STEP_SUMMARY
-          echo "  --user 0:0 \\" >> $GITHUB_STEP_SUMMARY
-          echo "  ${{ needs.prepare.outputs.image-name }}:${{ needs.prepare.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "# Or for rootless with userns-remap:" >> $GITHUB_STEP_SUMMARY
-          echo "docker run -d -p 33445:33445 -p 33445:33445/udp \\" >> $GITHUB_STEP_SUMMARY
-          echo "  -v tox-data:/var/lib/tox-bootstrapd \\" >> $GITHUB_STEP_SUMMARY
-          echo "  --userns=host \\" >> $GITHUB_STEP_SUMMARY
           echo "  --user 1000:1000 \\" >> $GITHUB_STEP_SUMMARY
-          echo "  ${{ needs.prepare.outputs.image-name }}:${{ needs.prepare.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "  ${{ needs.prepare.outputs.image_name }}:${{ needs.prepare.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
