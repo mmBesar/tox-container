@@ -34,10 +34,10 @@ RUN git submodule update --init --recursive && \
 # Runtime stage
 FROM alpine:3.19
 
-# Install runtime dependencies
+# Install runtime dependencies - IMPORTANT: Use -dev packages to get .so files
 RUN apk add --no-cache \
-    libsodium \
-    libconfig \
+    libsodium-dev \
+    libconfig-dev \
     su-exec \
     tini
 
@@ -52,16 +52,13 @@ COPY --from=builder /usr/local/ /usr/local/
 
 # Update library cache so the system can find libtoxcore.so.2
 RUN echo "/usr/local/lib" >> /etc/ld-musl-aarch64.path && \
+    echo "/usr/local/lib" >> /etc/ld-musl-x86_64.path && \
     ldconfig || true
 
 # Copy configuration and entrypoint
 COPY config/tox-bootstrapd.conf /etc/tox-bootstrapd/
 COPY entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/entrypoint.sh
-
-# Verify the binary can find its dependencies
-RUN echo "Final check - tox-bootstrapd dependencies:" && \
-    ldd /usr/local/bin/tox-bootstrapd
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
