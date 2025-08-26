@@ -1,38 +1,103 @@
-name: Build and Publish Container
+name: Build and Publish
 
 on:
+  # schedule:
+  #   - cron: '0 3 * * *'  # Daily at 3 AM UTC (1 hour after sync)
   # push:
   #   branches: [ main ]
   #   tags: [ 'v*' ]
-  # repository_dispatch:
-  #   types: [new-release, nightly-build]
   workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: false
+        default: 'auto'
+        type: choice
+        options:
+        - auto
+        - stable
+        - nightly
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-and-push:
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    
     steps:
-      - name: Checkout repository
+      - name: Checkout main branch
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Checkout upstream source
-        uses: actions/checkout@v4  
+        uses: actions/checkout@v4
         with:
           ref: upstream
           path: upstream
 
+      - name: Determine build type and version
+        id: build-info
+        run: |
+          IMAGE_NAME_LOWER=$(echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
+          echo "image-name=$IMAGE_NAME_LOWER" >> $GITHUB_OUTPUT
+          
+          # Manual build type override
+          if [ "${{ github.event.inputs.build_type }}" = "stable" ]; then
+            BUILD_TYPE="stable"
+          elif [ "${{ github.event.inputs.build_type }}" = "nightly" ]; then
+            BUILD_TYPE="nightly"
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            # Tagged release
+            BUILD_TYPE="stable"
+            VERSION="${{ github.ref_name }}"
+          else
+            # Auto-detect based on recent tags
+            cd upstream
+            LATEST_TAG=$(git tag -l --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1 || echo "none")
+            cd ..
+            
+            if [ "$LATEST_TAG" != "none" ] && git rev-parse "refs/tags/$LATEST_TAG" >/dev/null 2>&1; then
+              # We have the latest release, check if it's recent (within 7 days)
+              TAG_DATE=$(git log -1 --format=%ct "refs/tags/$LATEST_TAG" 2>/dev/null || echo "0")
+              CURRENT_DATE=$(date +%s)
+              DAYS_OLD=$(( (CURRENT_DATE - TAG_DATE) / 86400 ))
+              
+              if [ $DAYS_OLD -le 7 ]; then
+                BUILD_TYPE="stable"
+                VERSION="$LATEST_TAG"
+              else
+                BUILD_TYPE="nightly"
+              fi
+            else
+              BUILD_TYPE="nightly"
+            fi
+          fi
+          
+          echo "build-type=$BUILD_TYPE" >> $GITHUB_OUTPUT
+          
+          # Set version and tags based on build type
+          if [ "$BUILD_TYPE" = "stable" ]; then
+            if [ -z "$VERSION" ]; then
+              VERSION=$(git tag -l --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
+            fi
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "tags=${IMAGE_NAME_LOWER}:${VERSION},${IMAGE_NAME_LOWER}:latest" >> $GITHUB_OUTPUT
+          else
+            DATE=$(date +%Y%m%d)
+            VERSION="nightly-$DATE"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "tags=${IMAGE_NAME_LOWER}:nightly,${IMAGE_NAME_LOWER}:$VERSION" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "Build type: $BUILD_TYPE, Version: $VERSION"
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
-        
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -43,54 +108,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Determine build type and tags
-        id: meta
-        run: |
-          IMAGE_NAME=$(echo ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }} | tr '[:upper:]' '[:lower:]')
-          
-          if [[ "${{ github.event_name }}" == "repository_dispatch" ]]; then
-            if [[ "${{ github.event.action }}" == "new-release" ]]; then
-              # Stable release build
-              TAG="${{ github.event.client_payload.tag }}"
-              TAGS="${IMAGE_NAME}:${TAG},${IMAGE_NAME}:latest"
-              echo "BUILD_TYPE=stable" >> $GITHUB_OUTPUT
-              echo "VERSION=${TAG}" >> $GITHUB_OUTPUT
-            else
-              # Nightly build
-              DATE=$(date +%Y%m%d)
-              TAGS="${IMAGE_NAME}:nightly,${IMAGE_NAME}:nightly-${DATE}"
-              echo "BUILD_TYPE=nightly" >> $GITHUB_OUTPUT
-              echo "VERSION=nightly-${DATE}" >> $GITHUB_OUTPUT
-            fi
-          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            # Manual tag build
-            TAG=${GITHUB_REF#refs/tags/}
-            TAGS="${IMAGE_NAME}:${TAG},${IMAGE_NAME}:latest"
-            echo "BUILD_TYPE=stable" >> $GITHUB_OUTPUT  
-            echo "VERSION=${TAG}" >> $GITHUB_OUTPUT
-          else
-            # Development build
-            TAGS="${IMAGE_NAME}:dev"
-            echo "BUILD_TYPE=dev" >> $GITHUB_OUTPUT
-            echo "VERSION=dev" >> $GITHUB_OUTPUT
-          fi
-          
-          echo "TAGS=${TAGS}" >> $GITHUB_OUTPUT
-          echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_OUTPUT
-
       - name: Extract metadata
-        id: metadata
+        id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ steps.meta.outputs.IMAGE_NAME }}
-          tags: |
-            ${{ steps.meta.outputs.TAGS }}
+          images: ${{ steps.build-info.outputs.image-name }}
+          tags: ${{ steps.build-info.outputs.tags }}
           labels: |
             org.opencontainers.image.title=Tox Bootstrap Node
-            org.opencontainers.image.description=Lightweight Tox bootstrap daemon
+            org.opencontainers.image.description=Lightweight Tox bootstrap daemon for decentralized communication
             org.opencontainers.image.source=https://github.com/TokTok/c-toxcore
-            org.opencontainers.image.version=${{ steps.meta.outputs.VERSION }}
+            org.opencontainers.image.version=${{ steps.build-info.outputs.version }}
             org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -98,8 +128,8 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ steps.metadata.outputs.tags }}
-          labels: ${{ steps.metadata.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -109,15 +139,16 @@ jobs:
       - name: Generate summary
         run: |
           echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- **Build Type:** ${{ steps.meta.outputs.BUILD_TYPE }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version:** ${{ steps.meta.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Images:** ${{ steps.metadata.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Type:** ${{ steps.build-info.outputs.build-type }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version:** ${{ steps.build-info.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image:** ${{ steps.build-info.outputs.image-name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tags:** ${{ steps.build-info.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Platforms:** linux/amd64, linux/arm64" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Usage" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
           echo "docker run -d -p 33445:33445 -p 33445:33445/udp \\" >> $GITHUB_STEP_SUMMARY
-          echo "  -v tox-data:/var/lib/tox-bootstrapd \\" >> $GITHUB_STEP_SUMMARY  
+          echo "  -v tox-data:/var/lib/tox-bootstrapd \\" >> $GITHUB_STEP_SUMMARY
           echo "  --user 1000:1000 \\" >> $GITHUB_STEP_SUMMARY
-          echo "  ${{ steps.meta.outputs.IMAGE_NAME }}:${{ steps.meta.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "  ${{ steps.build-info.outputs.image-name }}:${{ steps.build-info.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
