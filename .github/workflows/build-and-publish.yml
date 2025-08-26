@@ -130,7 +130,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ needs.prepare.outputs.tags }}
+          tags: ${{ needs.prepare.outputs.image-name }}:${{ needs.prepare.outputs.version }}-amd64
           platforms: linux/amd64
           cache-from: type=gha,scope=amd64
           cache-to: type=gha,mode=max,scope=amd64
@@ -180,7 +180,7 @@ jobs:
           context: .
           file: ./Dockerfile  
           push: true
-          tags: ${{ needs.prepare.outputs.tags }}
+          tags: ${{ needs.prepare.outputs.image-name }}:${{ needs.prepare.outputs.version }}-arm64
           platforms: linux/arm64
           cache-from: type=gha,scope=arm64
           cache-to: type=gha,mode=max,scope=arm64
@@ -218,9 +218,8 @@ jobs:
             echo "Creating manifest for $TAG"
             docker buildx imagetools create \
               --tag "$TAG" \
-              "$TAG"
-              # "${TAG%:*}:${{ needs.prepare.outputs.version }}-amd64" \
-              # "${TAG%:*}:${{ needs.prepare.outputs.version }}-arm64"
+              "${{ needs.prepare.outputs.image-name }}:${{ needs.prepare.outputs.version }}-amd64" \
+              "${{ needs.prepare.outputs.image-name }}:${{ needs.prepare.outputs.version }}-arm64"
           done
 
       - name: Generate summary
