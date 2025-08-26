@@ -97,7 +97,7 @@ jobs:
           
           echo "Build type: $BUILD_TYPE, Version: $VERSION"
 
-  build-amd64:
+  build-multiarch:
     needs: prepare
     runs-on: ubuntu-latest
     permissions:
@@ -109,53 +109,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Checkout upstream source  
-        uses: actions/checkout@v4
-        with:
-          ref: upstream
-          path: upstream
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push AMD64
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile
-          push: true
-          tags: ${{ needs.prepare.outputs.image-name }}:${{ needs.prepare.outputs.version }}-amd64
-          platforms: linux/amd64
-          cache-from: type=gha,scope=amd64
-          cache-to: type=gha,mode=max,scope=amd64
-          build-contexts: |
-            upstream=./upstream
-          labels: |
-            org.opencontainers.image.title=Tox Bootstrap Node
-            org.opencontainers.image.description=Lightweight Tox bootstrap daemon for decentralized communication
-            org.opencontainers.image.source=https://github.com/TokTok/c-toxcore
-            org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-
-  build-arm64:
-    needs: prepare  
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    
-    steps:
-      - name: Checkout main branch
-        uses: actions/checkout@v4
-
-      - name: Checkout upstream source
         uses: actions/checkout@v4
         with:
           ref: upstream
@@ -174,18 +127,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push ARM64
+      - name: Build and push multi-arch
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile  
+          file: ./Dockerfile
           push: true
-          tags: ${{ needs.prepare.outputs.image-name }}:${{ needs.prepare.outputs.version }}-arm64
-          platforms: linux/arm64
-          cache-from: type=gha,scope=arm64
-          cache-to: type=gha,mode=max,scope=arm64
+          tags: ${{ needs.prepare.outputs.tags }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           build-contexts: |
             upstream=./upstream
+          provenance: false
+          sbom: false
           labels: |
             org.opencontainers.image.title=Tox Bootstrap Node
             org.opencontainers.image.description=Lightweight Tox bootstrap daemon for decentralized communication
@@ -193,34 +148,6 @@ jobs:
             org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-
-  create-manifest:
-    needs: [prepare, build-amd64, build-arm64]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      
-    steps:
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create and push multi-arch manifest
-        run: |
-          # Convert tags to array
-          IFS=',' read -ra TAGS <<< "${{ needs.prepare.outputs.tags }}"
-          
-          for TAG in "${TAGS[@]}"; do
-            echo "Creating manifest for $TAG"
-            docker buildx imagetools create \
-              --tag "$TAG" \
-              "${{ needs.prepare.outputs.image-name }}:${{ needs.prepare.outputs.version }}-amd64" \
-              "${{ needs.prepare.outputs.image-name }}:${{ needs.prepare.outputs.version }}-arm64"
-          done
 
       - name: Generate summary
         run: |
@@ -233,8 +160,16 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Usage" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "# Run with proper user namespace mapping" >> $GITHUB_STEP_SUMMARY
           echo "docker run -d -p 33445:33445 -p 33445:33445/udp \\" >> $GITHUB_STEP_SUMMARY
           echo "  -v tox-data:/var/lib/tox-bootstrapd \\" >> $GITHUB_STEP_SUMMARY
+          echo "  --user 0:0 \\" >> $GITHUB_STEP_SUMMARY
+          echo "  ${{ needs.prepare.outputs.image-name }}:${{ needs.prepare.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Or for rootless with userns-remap:" >> $GITHUB_STEP_SUMMARY
+          echo "docker run -d -p 33445:33445 -p 33445:33445/udp \\" >> $GITHUB_STEP_SUMMARY
+          echo "  -v tox-data:/var/lib/tox-bootstrapd \\" >> $GITHUB_STEP_SUMMARY
+          echo "  --userns=host \\" >> $GITHUB_STEP_SUMMARY
           echo "  --user 1000:1000 \\" >> $GITHUB_STEP_SUMMARY
           echo "  ${{ needs.prepare.outputs.image-name }}:${{ needs.prepare.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
