@@ -19,11 +19,13 @@ RUN git submodule update --init --recursive && \
     mkdir _build && cd _build && \
     cmake .. \
         -DCMAKE_BUILD_TYPE=Release \
-        -DENABLE_STATIC=OFF \
+        -DENABLE_STATIC=ON \
         -DBUILD_TESTING=OFF \
         -DMUST_BUILD_TOXAV=OFF \
         -DBOOTSTRAP_DAEMON=ON && \
-    make -j$(nproc) tox-bootstrapd
+    make -j$(nproc) tox-bootstrapd && \
+    echo "Built binary info:" && \
+    ldd other/bootstrap_daemon/tox-bootstrapd || echo "Static binary - no dynamic dependencies"
 
 # Runtime stage
 FROM alpine:3.19
@@ -41,7 +43,7 @@ RUN addgroup -g 1000 tox && \
     mkdir -p /var/lib/tox-bootstrapd /etc/tox-bootstrapd && \
     chown -R tox:tox /var/lib/tox-bootstrapd
 
-# Copy bootstrap daemon binary
+# Copy bootstrap daemon binary (now static)
 COPY --from=builder /build/_build/other/bootstrap_daemon/tox-bootstrapd /usr/local/bin/
 
 # Copy configuration and entrypoint
@@ -64,5 +66,5 @@ CMD ["/usr/local/bin/entrypoint.sh"]
 LABEL org.opencontainers.image.title="Tox Bootstrap Node" \
       org.opencontainers.image.description="Lightweight Tox bootstrap daemon for decentralized communication" \
       org.opencontainers.image.source="https://github.com/TokTok/c-toxcore" \
-      org.opencontainers.image.vendor="Your Name" \
+      org.opencontainers.image.vendor="mBesar" \
       org.opencontainers.image.licenses="GPL-3.0"
