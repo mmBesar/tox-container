@@ -218,8 +218,9 @@ jobs:
             echo "Creating manifest for $TAG"
             docker buildx imagetools create \
               --tag "$TAG" \
-              "${TAG%:*}:${{ needs.prepare.outputs.version }}-amd64" \
-              "${TAG%:*}:${{ needs.prepare.outputs.version }}-arm64"
+              "$TAG"
+              # "${TAG%:*}:${{ needs.prepare.outputs.version }}-amd64" \
+              # "${TAG%:*}:${{ needs.prepare.outputs.version }}-arm64"
           done
 
       - name: Generate summary
