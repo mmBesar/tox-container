@@ -19,13 +19,17 @@ RUN git submodule update --init --recursive && \
     mkdir _build && cd _build && \
     cmake .. \
         -DCMAKE_BUILD_TYPE=Release \
-        -DENABLE_STATIC=ON \
+        -DENABLE_STATIC=OFF \
         -DBUILD_TESTING=OFF \
         -DMUST_BUILD_TOXAV=OFF \
-        -DBOOTSTRAP_DAEMON=ON && \
-    make -j$(nproc) tox-bootstrapd && \
-    echo "Built binary info:" && \
-    ldd other/bootstrap_daemon/tox-bootstrapd || echo "Static binary - no dynamic dependencies"
+        -DBOOTSTRAP_DAEMON=ON \
+        -DCMAKE_INSTALL_PREFIX=/usr/local && \
+    make -j$(nproc) && \
+    make install && \
+    echo "Installed files:" && \
+    find /usr/local -name "*tox*" && \
+    echo "Bootstrap daemon dependencies:" && \
+    ldd /usr/local/bin/tox-bootstrapd
 
 # Runtime stage
 FROM alpine:3.19
@@ -43,13 +47,21 @@ RUN addgroup -g 1000 tox && \
     mkdir -p /var/lib/tox-bootstrapd /etc/tox-bootstrapd && \
     chown -R tox:tox /var/lib/tox-bootstrapd
 
-# Copy bootstrap daemon binary (now static)
-COPY --from=builder /build/_build/other/bootstrap_daemon/tox-bootstrapd /usr/local/bin/
+# Copy the complete installation from builder (binaries + libraries)
+COPY --from=builder /usr/local/ /usr/local/
+
+# Update library cache so the system can find libtoxcore.so.2
+RUN echo "/usr/local/lib" >> /etc/ld-musl-aarch64.path && \
+    ldconfig || true
 
 # Copy configuration and entrypoint
 COPY config/tox-bootstrapd.conf /etc/tox-bootstrapd/
 COPY entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Verify the binary can find its dependencies
+RUN echo "Final check - tox-bootstrapd dependencies:" && \
+    ldd /usr/local/bin/tox-bootstrapd
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
@@ -66,5 +78,5 @@ CMD ["/usr/local/bin/entrypoint.sh"]
 LABEL org.opencontainers.image.title="Tox Bootstrap Node" \
       org.opencontainers.image.description="Lightweight Tox bootstrap daemon for decentralized communication" \
       org.opencontainers.image.source="https://github.com/TokTok/c-toxcore" \
-      org.opencontainers.image.vendor="mBesar" \
+      org.opencontainers.image.vendor="mbesar" \
       org.opencontainers.image.licenses="GPL-3.0"
