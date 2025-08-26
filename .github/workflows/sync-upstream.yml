@@ -2,26 +2,24 @@ name: Sync Upstream
 
 on:
   # schedule:
-  #   # Run daily at 2 AM UTC
-  #   - cron: '0 2 * * *'
-  workflow_dispatch: # Allow manual trigger
+  #   - cron: '0 2 * * *'  # Daily at 2 AM UTC
+  workflow_dispatch:
 
 jobs:
-  sync-and-check:
+  sync:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      actions: write
     outputs:
-      has-new-release: ${{ steps.check-release.outputs.has-new-release }}
-      new-tag: ${{ steps.check-release.outputs.new-tag }}
-      has-changes: ${{ steps.sync.outputs.has-changes }}
+      has-changes: ${{ steps.check.outputs.has-changes }}
+      latest-release: ${{ steps.check.outputs.latest-release }}
+      new-release: ${{ steps.check.outputs.new-release }}
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure Git
         run: |
@@ -31,74 +29,77 @@ jobs:
       - name: Add upstream remote
         run: |
           git remote add upstream https://github.com/TokTok/c-toxcore.git || true
-          git fetch upstream
+          git fetch upstream --tags
 
-      - name: Check for new releases
-        id: check-release
+      - name: Check for changes and releases
+        id: check
         run: |
-          # Get latest release tag from upstream
-          LATEST_TAG=$(git ls-remote --tags upstream | grep -E 'refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/.*refs\/tags\///' | sort -V | tail -1)
+          # Get latest upstream commit
+          UPSTREAM_COMMIT=$(git rev-parse upstream/master)
           
-          # Check if we already have this tag
-          if git rev-parse "refs/tags/$LATEST_TAG" >/dev/null 2>&1; then
-            echo "has-new-release=false" >> $GITHUB_OUTPUT
-            echo "No new release found"
+          # Check if upstream branch exists and get its commit
+          if git rev-parse origin/upstream >/dev/null 2>&1; then
+            CURRENT_COMMIT=$(git rev-parse origin/upstream)
           else
-            echo "has-new-release=true" >> $GITHUB_OUTPUT
-            echo "new-tag=$LATEST_TAG" >> $GITHUB_OUTPUT
-            echo "New release found: $LATEST_TAG"
+            CURRENT_COMMIT="none"
           fi
-
-      - name: Sync upstream to branch
-        id: sync
-        run: |
-          # Create or update upstream branch  
-          git checkout -B upstream upstream/master
           
-          # Remove any .github/workflows to avoid permission issues
-          rm -rf .github/workflows/ || true
-          git add -A
-          git commit -m "Remove workflows from upstream sync" || true
-          
-          git push origin upstream --force
-          
-          # Check for changes in the last sync (compare with previous commit)
-          if git rev-list --count HEAD~1..HEAD 2>/dev/null | grep -q "^1$"; then
-            echo "has-changes=true" >> $GITHUB_OUTPUT  
+          # Check for changes
+          if [ "$UPSTREAM_COMMIT" != "$CURRENT_COMMIT" ]; then
+            echo "has-changes=true" >> $GITHUB_OUTPUT
             echo "Changes detected in upstream"
           else
             echo "has-changes=false" >> $GITHUB_OUTPUT
-            echo "No changes detected"
+            echo "No changes in upstream"
+          fi
+          
+          # Get latest release tag from upstream
+          LATEST_RELEASE=$(git tag -l --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1 || echo "none")
+          echo "latest-release=$LATEST_RELEASE" >> $GITHUB_OUTPUT
+          
+          # Check if we already have this release
+          if [ "$LATEST_RELEASE" != "none" ] && ! git rev-parse "refs/tags/$LATEST_RELEASE" >/dev/null 2>&1; then
+            echo "new-release=true" >> $GITHUB_OUTPUT
+            echo "New release found: $LATEST_RELEASE"
+          else
+            echo "new-release=false" >> $GITHUB_OUTPUT
+            echo "No new release"
           fi
 
-      - name: Create release tag if new version
-        if: steps.check-release.outputs.has-new-release == 'true'
+      - name: Update upstream branch
+        if: steps.check.outputs.has-changes == 'true'
         run: |
-          TAG=${{ steps.check-release.outputs.new-tag }}
-          git checkout upstream
-          git tag $TAG
-          git push origin $TAG
-          echo "Created and pushed tag: $TAG"
+          # Create/update upstream branch
+          git checkout -B upstream upstream/master
+          
+          # Remove .github directory to avoid permission issues
+          rm -rf .github || true
+          
+          # Commit changes if any
+          git add -A
+          if ! git diff --staged --quiet; then
+            git commit -m "Sync upstream - $(date +%Y-%m-%d)"
+          fi
+          
+          # Push upstream branch
+          git push origin upstream --force
+          echo "Upstream branch updated successfully"
 
-  trigger-stable-build:
-    needs: sync-and-check
-    if: needs.sync-and-check.outputs.has-new-release == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger stable build
-        uses: peter-evans/repository-dispatch@v2
-        with:
-          token: ${{ secrets.PAT_TOKEN }}
-          event-type: new-release
-          client-payload: '{"tag": "${{ needs.sync-and-check.outputs.new-tag }}"}'
+      - name: Create new release tag
+        if: steps.check.outputs.new-release == 'true'
+        run: |
+          RELEASE_TAG="${{ steps.check.outputs.latest-release }}"
+          
+          # Create annotated tag from upstream commit
+          git tag -a "$RELEASE_TAG" upstream/master -m "Release $RELEASE_TAG from upstream"
+          git push origin "$RELEASE_TAG"
+          
+          echo "Created release tag: $RELEASE_TAG"
 
-  trigger-nightly-build:
-    needs: sync-and-check  
-    if: needs.sync-and-check.outputs.has-changes == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger nightly build
-        uses: peter-evans/repository-dispatch@v2
-        with:
-          token: ${{ secrets.PAT_TOKEN }}
-          event-type: nightly-build
+      - name: Summary
+        run: |
+          echo "## Sync Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Changes:** ${{ steps.check.outputs.has-changes }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Latest Release:** ${{ steps.check.outputs.latest-release }}" >> $GITHUB_STEP_SUMMARY  
+          echo "- **New Release:** ${{ steps.check.outputs.new-release }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp:** $(date)" >> $GITHUB_STEP_SUMMARY
