@@ -59,7 +59,7 @@ jobs:
           else
             # Auto-detect based on recent tags
             cd upstream
-            LATEST_TAG=$(git tag -l --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+ | head -1 || echo "none")
+            LATEST_TAG=$(git tag -l --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "none")
             cd ..
             
             if [ "$LATEST_TAG" != "none" ] && git rev-parse "refs/tags/$LATEST_TAG" >/dev/null 2>&1; then
