@@ -1,127 +1,41 @@
-name: Build and Publish Multi-Arch
+name: Build and Publish
 
 on:
   push:
+    branches: [main]
     paths:
-      - '.github/workflows/build.yml'
       - 'Dockerfile'
       - 'entrypoint.sh'
-  pull_request:
-    paths:
-      - '.github/workflows/build.yml'
-      - 'Dockerfile' 
-      - 'entrypoint.sh'
+      - '.github/workflows/build-and-publish.yml'
   workflow_dispatch:
-    inputs:
-      build_type:
-        description: 'Build type'
-        required: false
-        default: 'auto'
-        type: choice
-        options:
-        - auto
-        - stable
-        - nightly
 
 env:
   REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 permissions:
   contents: read
   packages: write
 
 jobs:
-  prepare:
-    runs-on: ubuntu-latest
-    outputs:
-      build-type: ${{ steps.build-info.outputs.build-type }}
-      version: ${{ steps.build-info.outputs.version }}
-      image_name: ${{ steps.build-info.outputs.image_name }}
-    
-    steps:
-      - name: Checkout main branch
-        uses: actions/checkout@v4
-
-      - name: Checkout upstream source
-        uses: actions/checkout@v4
-        with:
-          ref: upstream
-          path: upstream
-
-      - name: Determine build type and version
-        id: build-info
-        run: |
-          IMAGE_NAME_LOWER=$(echo "${{ env.REGISTRY }}/${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          echo "image_name=$IMAGE_NAME_LOWER" >> $GITHUB_OUTPUT
-          
-          # Manual build type override
-          if [ "${{ github.event.inputs.build_type }}" = "stable" ]; then
-            BUILD_TYPE="stable"
-          elif [ "${{ github.event.inputs.build_type }}" = "nightly" ]; then
-            BUILD_TYPE="nightly"
-          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            # Tagged release
-            BUILD_TYPE="stable"
-            VERSION="${{ github.ref_name }}"
-          else
-            # Auto-detect based on recent tags
-            cd upstream
-            LATEST_TAG=$(git tag -l --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "none")
-            cd ..
-            
-            if [ "$LATEST_TAG" != "none" ] && git rev-parse "refs/tags/$LATEST_TAG" >/dev/null 2>&1; then
-              # We have the latest release, check if it's recent (within 7 days)
-              TAG_DATE=$(git log -1 --format=%ct "refs/tags/$LATEST_TAG" 2>/dev/null || echo "0")
-              CURRENT_DATE=$(date +%s)
-              DAYS_OLD=$(( (CURRENT_DATE - TAG_DATE) / 86400 ))
-              
-              if [ $DAYS_OLD -le 7 ]; then
-                BUILD_TYPE="stable"
-                VERSION="$LATEST_TAG"
-              else
-                BUILD_TYPE="nightly"
-              fi
-            else
-              BUILD_TYPE="nightly"
-            fi
-          fi
-          
-          echo "build-type=$BUILD_TYPE" >> $GITHUB_OUTPUT
-          
-          # Set version based on build type
-          if [ "$BUILD_TYPE" = "stable" ]; then
-            if [ -z "$VERSION" ]; then
-              VERSION=$(git tag -l --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-            fi
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-          else
-            DATE=$(date +%Y%m%d)
-            VERSION="nightly-$DATE"
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-          fi
-          
-          echo "Build type: $BUILD_TYPE, Version: $VERSION"
-
-  # Build per architecture
   build:
-    needs: prepare
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        arch: [amd64, arm64]
-
+        platform: 
+          - linux/amd64
+          - linux/arm64
+    
     steps:
-      - name: Checkout main branch
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Checkout upstream source
         uses: actions/checkout@v4
         with:
-          ref: upstream
+          repository: TokTok/c-toxcore
+          ref: master
           path: upstream
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -133,34 +47,56 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push ${{ matrix.arch }}
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=nightly,enable={{is_default_branch}}
+
+      - name: Build and push by digest
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
-          platforms: linux/${{ matrix.arch }}
-          push: true
-          tags: |
-            ${{ needs.prepare.outputs.image_name }}:${{ needs.prepare.outputs.version }}-${{ matrix.arch }}
-            ${{ needs.prepare.outputs.image_name }}:latest-${{ matrix.arch }}
-          cache-from: type=gha,scope=${{ matrix.arch }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
+          platforms: ${{ matrix.platform }}
           build-contexts: |
             upstream=./upstream
-          labels: |
-            org.opencontainers.image.title=Tox Bootstrap Node
-            org.opencontainers.image.description=Lightweight Tox bootstrap daemon for decentralized communication
-            org.opencontainers.image.source=https://github.com/TokTok/c-toxcore
-            org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=build-${{ strategy.job-index }}
+          cache-to: type=gha,mode=max,scope=build-${{ strategy.job-index }}
 
-  # Create multi-arch manifests
-  manifest:
-    needs: [prepare, build]
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ strategy.job-index }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
     runs-on: ubuntu-latest
-
+    needs:
+      - build
     steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -171,42 +107,39 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create multi-arch manifests
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=nightly,enable={{is_default_branch}}
+
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
         run: |
-          IMAGE=${{ needs.prepare.outputs.image_name }}
-          VERSION=${{ needs.prepare.outputs.version }}
-          
-          # Create versioned manifest
-          docker buildx imagetools create \
-            --tag $IMAGE:$VERSION \
-            $IMAGE:$VERSION-amd64 \
-            $IMAGE:$VERSION-arm64
-          
-          # Create latest/nightly manifest based on build type
-          if [ "${{ needs.prepare.outputs.build-type }}" = "stable" ]; then
-            docker buildx imagetools create \
-              --tag $IMAGE:latest \
-              $IMAGE:$VERSION-amd64 \
-              $IMAGE:$VERSION-arm64
-          else
-            docker buildx imagetools create \
-              --tag $IMAGE:nightly \
-              $IMAGE:$VERSION-amd64 \
-              $IMAGE:$VERSION-arm64
-          fi
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+
+      - name: Inspect image
+        run: |
+          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
 
       - name: Generate summary
         run: |
           echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- **Build Type:** ${{ needs.prepare.outputs.build-type }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version:** ${{ needs.prepare.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Image:** ${{ needs.prepare.outputs.image_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Architectures:** linux/amd64, linux/arm64" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image:** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Platforms:** linux/amd64, linux/arm64" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tags:** ${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Usage" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "docker run -d -p 33445:33445 -p 33445:33445/udp \\" >> $GITHUB_STEP_SUMMARY
-          echo "  -v tox-data:/var/lib/tox-bootstrapd \\" >> $GITHUB_STEP_SUMMARY
+          echo "docker run -d --name tox-bootstrap \\" >> $GITHUB_STEP_SUMMARY
           echo "  --user 1000:1000 \\" >> $GITHUB_STEP_SUMMARY
-          echo "  ${{ needs.prepare.outputs.image_name }}:${{ needs.prepare.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "  -p 33445:33445/tcp -p 33445:33445/udp \\" >> $GITHUB_STEP_SUMMARY
+          echo "  -v tox-data:/var/lib/tox-bootstrapd \\" >> $GITHUB_STEP_SUMMARY
+          echo "  ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
