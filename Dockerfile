@@ -1,4 +1,4 @@
-FROM alpine:3.19 as builder
+FROM alpine:3.19 AS builder
 
 # Install build dependencies
 RUN apk add --no-cache \
@@ -6,74 +6,52 @@ RUN apk add --no-cache \
     cmake \
     git \
     libsodium-dev \
-    libconfig-dev \
-    linux-headers \
     pkgconfig
 
-# Clone and build toxcore from upstream branch
-WORKDIR /build
-COPY --from=upstream . /build/
+# Build toxcore with minimal dependencies (following TokTok patterns)
+WORKDIR /src
+COPY --from=upstream . .
 
-# Initialize git submodules and build toxcore with bootstrap daemon
+# Initialize submodules and configure build (minimal bootstrap-only build)
 RUN git submodule update --init --recursive && \
-    mkdir _build && cd _build && \
+    mkdir _build && \
+    cd _build && \
     cmake .. \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DENABLE_STATIC=OFF \
+        -DCMAKE_BUILD_TYPE=MinSizeRel \
+        -DENABLE_STATIC=ON \
         -DBUILD_TESTING=OFF \
         -DMUST_BUILD_TOXAV=OFF \
-        -DBOOTSTRAP_DAEMON=ON \
-        -DCMAKE_INSTALL_PREFIX=/usr/local && \
-    make -j$(nproc) && \
-    make install && \
-    echo "Installed files:" && \
-    find /usr/local -name "*tox*" && \
-    echo "Bootstrap daemon dependencies:" && \
-    ldd /usr/local/bin/tox-bootstrapd
+        -DBOOTSTRAP_DAEMON=ON && \
+    make -j"$(nproc)" tox-bootstrapd && \
+    strip other/bootstrap_daemon/tox-bootstrapd
 
-# Runtime stage
+# Runtime stage - ultra minimal
 FROM alpine:3.19
 
-# Install runtime dependencies - IMPORTANT: Use -dev packages to get .so files
+# Only essential runtime dependencies
 RUN apk add --no-cache \
-    libsodium-dev \
-    libconfig-dev \
-    su-exec \
-    tini
+    libsodium \
+    tini && \
+    addgroup -g 1000 tox && \
+    adduser -D -u 1000 -G tox -h /var/lib/tox-bootstrapd -s /bin/sh tox
 
-# Create tox user and directories
-RUN addgroup -g 1000 tox && \
-    adduser -D -u 1000 -G tox -h /var/lib/tox-bootstrapd tox && \
-    mkdir -p /var/lib/tox-bootstrapd /etc/tox-bootstrapd && \
-    chown -R tox:tox /var/lib/tox-bootstrapd
-
-# Copy the complete installation from builder (binaries + libraries)
-COPY --from=builder /usr/local/ /usr/local/
-
-# Update library cache so the system can find libtoxcore.so.2
-RUN echo "/usr/local/lib" >> /etc/ld-musl-aarch64.path && \
-    echo "/usr/local/lib" >> /etc/ld-musl-x86_64.path && \
-    ldconfig || true
-
-# Copy configuration and entrypoint
-COPY config/tox-bootstrapd.conf /etc/tox-bootstrapd/
+# Copy only the static binary
+COPY --from=builder /src/_build/other/bootstrap_daemon/tox-bootstrapd /usr/local/bin/
 COPY entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD netstat -tuln | grep :33445 || exit 1
+# Create directories with correct permissions
+RUN mkdir -p /var/lib/tox-bootstrapd /etc/tox-bootstrapd && \
+    chown -R tox:tox /var/lib/tox-bootstrapd
 
-# Expose ports
+# Expose standard Tox ports
 EXPOSE 33445/tcp 33445/udp
 
-# Use tini as PID 1
+# Use tini for proper signal handling
 ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["/usr/local/bin/entrypoint.sh"]
 
-# Labels
+# Metadata
 LABEL org.opencontainers.image.title="Tox Bootstrap Node" \
-      org.opencontainers.image.description="Lightweight Tox bootstrap daemon for decentralized communication" \
-      org.opencontainers.image.source="https://github.com/TokTok/c-toxcore" \
-      org.opencontainers.image.vendor="mbesar" \
-      org.opencontainers.image.licenses="GPL-3.0"
+      org.opencontainers.image.description="Minimal Tox bootstrap daemon for local networks" \
+      org.opencontainers.image.source="https://github.com/TokTok/c-toxcore"
