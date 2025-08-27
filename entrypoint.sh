@@ -1,86 +1,148 @@
 #!/bin/sh
 set -e
 
-# Configuration defaults
-TOX_DATA_DIR="${TOX_DATA_DIR:-/var/lib/tox-bootstrapd}"
-TOX_PORT="${TOX_PORT:-33445}"
-TOX_MOTD="${TOX_MOTD:-Tox Bootstrap Node}"
+# Environment variables with defaults
+TOX_LOG_LEVEL=${TOX_LOG_LEVEL:-"INFO"}
+TOX_LOG_BACKEND=${TOX_LOG_BACKEND:-"stdout"}
+TOX_PORT_TCP=${TOX_PORT_TCP:-"33445"}
+TOX_PORT_UDP=${TOX_PORT_UDP:-"33445"}
+TOX_KEYS_FILE=${TOX_KEYS_FILE:-"/var/lib/tox-bootstrapd/keys"}
+TOX_PID_FILE=${TOX_PID_FILE:-"/var/lib/tox-bootstrapd/tox-bootstrapd.pid"}
+TOX_LOG_FILE=${TOX_LOG_FILE:-"/var/log/tox-bootstrapd/tox-bootstrapd.log"}
 
-echo "=== Tox Bootstrap Node ==="
+# Function to generate configuration if it doesn't exist
+generate_config() {
+    if [ ! -f /etc/tox-bootstrapd/tox-bootstrapd.conf ]; then
+        echo "Generating default configuration..."
+        cat > /etc/tox-bootstrapd/tox-bootstrapd.conf << EOF
+// Tox Bootstrap Daemon Configuration for Local Network
+// Listening ports
+port = $TOX_PORT_TCP
+udp_port = $TOX_PORT_UDP
 
-# Ensure we're running as the tox user (container should be started with --user tox)
-if [ "$(id -u)" != "1000" ]; then
-    echo "ERROR: Container must be run with --user 1000:1000"
-    echo "Usage: docker run --user 1000:1000 -p 33445:33445 -p 33445:33445/udp <image>"
-    exit 1
-fi
+// Key storage
+keys_file_path = "$TOX_KEYS_FILE"
+pid_file_path = "$TOX_PID_FILE"
 
-# Ensure data directory exists
-mkdir -p "$TOX_DATA_DIR"
-cd "$TOX_DATA_DIR"
+// Logging
+enable_log = true
+log_level = "$TOX_LOG_LEVEL"
+log_backend = "$TOX_LOG_BACKEND"
+log_file_path = "$TOX_LOG_FILE"
 
-# Generate keys if they don't exist
-if [ ! -f keys ]; then
-    echo "Generating bootstrap keys..."
-    tox-bootstrapd --keys-file=keys --generate-keys
-    echo "Keys generated successfully!"
-fi
-
-# Create minimal runtime config
-cat > tox-bootstrapd.conf << EOF
-// Minimal tox-bootstrapd configuration for local networks
-port = $TOX_PORT
-keys_file_path = "$TOX_DATA_DIR/keys"
-pid_file_path = "$TOX_DATA_DIR/tox-bootstrapd.pid"
-
-// Network settings
-enable_ipv6 = true
+// Networking - Allow connections from local networks
+enable_ipv6 = false
 enable_ipv4_fallback = true
 enable_lan_discovery = true
-enable_tcp_relay = true
-tcp_relay_ports = [$TOX_PORT]
+enable_hole_punching = true
 
-// MOTD
+// Performance tuning for local networks
+motd = "Local Toxcore Bootstrap Node"
 enable_motd = true
-motd = "$TOX_MOTD"
 
-// Bootstrap from public nodes (minimal list for local networks)
+// Bootstrap nodes list (empty for local-only operation)
 bootstrap_nodes = (
-    {
-        address = "tox.verdict.gg"
-        port = 33445
-        public_key = "1C5293AEF2114717547B39DA8EA6F1E331E5E358B35F9B6B5F19317911C5F976"
-    },
-    {
-        address = "bootstrap.tox.chat"
-        port = 33445
-        public_key = "3F0A45A268367C1BEA652F258C85F4A66DA76BCAA667A49E770BCC4917AB6A25"
-    }
+    // Add your bootstrap nodes here if needed
+    // { address = "node.tox.biribiri.org", port = 33445, public_key = "F404ABAA1C99A9D37D61AB54898F56793E1DEF8BD46B1038B9D822E8460FAB67" }
 )
 EOF
+        echo "Configuration generated at /etc/tox-bootstrapd/tox-bootstrapd.conf"
+    fi
+}
 
-# Display node information
-if [ -f keys ]; then
-    echo "=== Node Information ==="
-    echo "Port: $TOX_PORT (TCP/UDP)"
-    echo "Data: $TOX_DATA_DIR"
-    echo "MOTD: $TOX_MOTD"
+# Function to display node info
+show_node_info() {
+    if [ -f "$TOX_KEYS_FILE" ]; then
+        echo "==================================="
+        echo "TOX BOOTSTRAP NODE INFORMATION"
+        echo "==================================="
+        echo "TCP Port: $TOX_PORT_TCP"
+        echo "UDP Port: $TOX_PORT_UDP"
+        echo "Keys File: $TOX_KEYS_FILE"
+        echo "Log Level: $TOX_LOG_LEVEL"
+        echo "==================================="
+        
+        # Try to extract public key if possible
+        if command -v xxd >/dev/null 2>&1 && [ -f "$TOX_KEYS_FILE" ]; then
+            echo "Public Key (hex):"
+            xxd -l 32 -p "$TOX_KEYS_FILE" | tr -d '\n'
+            echo
+            echo "==================================="
+        fi
+    fi
+}
+
+# Function to initialize directories and files
+init_dirs() {
+    # Ensure directories exist with correct permissions
+    mkdir -p "$(dirname "$TOX_KEYS_FILE")"
+    mkdir -p "$(dirname "$TOX_PID_FILE")"
+    mkdir -p "$(dirname "$TOX_LOG_FILE")"
     
-    # Extract and display public key
-    PUBLIC_KEY=$(od -A n -t x1 -j 0 -N 32 keys | tr -d ' \n' | tr '[:lower:]' '[:upper:]')
-    echo "Public Key: $PUBLIC_KEY"
-    echo ""
-    echo "Add this node to your Tox client:"
-    echo "  Address: <your-server-ip>"
-    echo "  Port: $TOX_PORT"
-    echo "  Public Key: $PUBLIC_KEY"
-    echo "========================="
-fi
+    # Create log file if it doesn't exist
+    if [ ! -f "$TOX_LOG_FILE" ] && [ "$TOX_LOG_BACKEND" = "file" ]; then
+        touch "$TOX_LOG_FILE"
+    fi
+}
 
-echo "Starting tox-bootstrapd..."
+# Handle signals
+cleanup() {
+    echo "Received termination signal, shutting down..."
+    if [ -f "$TOX_PID_FILE" ]; then
+        PID=$(cat "$TOX_PID_FILE")
+        if kill -0 "$PID" 2>/dev/null; then
+            kill -TERM "$PID"
+            wait "$PID" 2>/dev/null
+        fi
+        rm -f "$TOX_PID_FILE"
+    fi
+    exit 0
+}
 
-# Start the daemon in foreground mode
-exec tox-bootstrapd \
-    --config="$TOX_DATA_DIR/tox-bootstrapd.conf" \
-    --log-backend=stdout \
-    --foreground
+# Set up signal handlers
+trap cleanup SIGTERM SIGINT SIGQUIT
+
+# Main execution
+main() {
+    echo "Starting Tox Bootstrap Daemon..."
+    echo "Container: toxcore-local-$(date +%Y%m%d)"
+    
+    # Initialize
+    init_dirs
+    generate_config
+    show_node_info
+    
+    # Execute the command
+    if [ "$1" = "tox-bootstrapd" ]; then
+        # Run tox-bootstrapd with provided arguments
+        echo "Starting bootstrap daemon with: $*"
+        exec "$@"
+    else
+        # Run custom command
+        echo "Running custom command: $*"
+        exec "$@"
+    fi
+}
+
+# Special commands
+case "$1" in
+    "version")
+        tox-bootstrapd --version
+        exit 0
+        ;;
+    "config")
+        generate_config
+        cat /etc/tox-bootstrapd/tox-bootstrapd.conf
+        exit 0
+        ;;
+    "info")
+        show_node_info
+        exit 0
+        ;;
+    "shell")
+        exec /bin/sh
+        ;;
+    *)
+        main "$@"
+        ;;
+esac
