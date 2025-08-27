@@ -1,127 +1,86 @@
 #!/bin/sh
 set -e
 
-# Default configuration
-TOX_USER=${TOX_USER:-tox}
-TOX_GROUP=${TOX_GROUP:-tox}
-TOX_UID=${TOX_UID:-1000}
-TOX_GID=${TOX_GID:-1000}
-TOX_DATA_DIR=${TOX_DATA_DIR:-/var/lib/tox-bootstrapd}
-TOX_CONFIG=${TOX_CONFIG:-/etc/tox-bootstrapd/tox-bootstrapd.conf}
-TOX_LOG_LEVEL=${TOX_LOG_LEVEL:-info}
-TOX_PORT=${TOX_PORT:-33445}
-TOX_MOTD=${TOX_MOTD:-"Tox Bootstrap Node - Stay connected!"}
+# Configuration defaults
+TOX_DATA_DIR="${TOX_DATA_DIR:-/var/lib/tox-bootstrapd}"
+TOX_PORT="${TOX_PORT:-33445}"
+TOX_MOTD="${TOX_MOTD:-Tox Bootstrap Node}"
 
-# Check if we're running as root
-if [ "$(id -u)" = "0" ]; then
-    echo "Running as root, will use su-exec to drop privileges"
-    USE_SU_EXEC=true
-    
-    # Ensure data directory exists and has correct permissions
-    mkdir -p "$TOX_DATA_DIR"
-    chown -R "$TOX_UID:$TOX_GID" "$TOX_DATA_DIR"
-    
-    # Ensure tox user exists with correct UID/GID
-    if ! getent group "$TOX_GID" > /dev/null 2>&1; then
-        addgroup -g "$TOX_GID" "$TOX_GROUP"
-    fi
-    if ! getent passwd "$TOX_UID" > /dev/null 2>&1; then
-        adduser -D -u "$TOX_UID" -G "$TOX_GROUP" -h "$TOX_DATA_DIR" "$TOX_USER"
-    fi
-else
-    echo "Running as user $(id -u):$(id -g), no privilege dropping needed"
-    USE_SU_EXEC=false
-    
-    # Just ensure data directory exists (permissions should already be correct from volume mount)
-    mkdir -p "$TOX_DATA_DIR"
+echo "=== Tox Bootstrap Node ==="
+
+# Ensure we're running as the tox user (container should be started with --user tox)
+if [ "$(id -u)" != "1000" ]; then
+    echo "ERROR: Container must be run with --user 1000:1000"
+    echo "Usage: docker run --user 1000:1000 -p 33445:33445 -p 33445:33445/udp <image>"
+    exit 1
 fi
 
+# Ensure data directory exists
+mkdir -p "$TOX_DATA_DIR"
+cd "$TOX_DATA_DIR"
+
 # Generate keys if they don't exist
-if [ ! -f "$TOX_DATA_DIR/keys" ]; then
-    echo "Generating new bootstrap keys..."
-    if [ "$USE_SU_EXEC" = "true" ]; then
-        su-exec "$TOX_UID:$TOX_GID" tox-bootstrapd --keys-file="$TOX_DATA_DIR/keys" --generate-keys
-    else
-        tox-bootstrapd --keys-file="$TOX_DATA_DIR/keys" --generate-keys
-    fi
+if [ ! -f keys ]; then
+    echo "Generating bootstrap keys..."
+    tox-bootstrapd --keys-file=keys --generate-keys
     echo "Keys generated successfully!"
 fi
 
-# Create runtime config from template
-cat > /tmp/tox-bootstrapd.conf << EOF
-// Tox Bootstrap Daemon Configuration
+# Create minimal runtime config
+cat > tox-bootstrapd.conf << EOF
+// Minimal tox-bootstrapd configuration for local networks
 port = $TOX_PORT
 keys_file_path = "$TOX_DATA_DIR/keys"
 pid_file_path = "$TOX_DATA_DIR/tox-bootstrapd.pid"
+
+// Network settings
 enable_ipv6 = true
 enable_ipv4_fallback = true
 enable_lan_discovery = true
 enable_tcp_relay = true
-tcp_relay_ports = [443, 3389, $TOX_PORT]
+tcp_relay_ports = [$TOX_PORT]
+
+// MOTD
 enable_motd = true
 motd = "$TOX_MOTD"
 
-// Bootstrap nodes - these are public bootstrap nodes
+// Bootstrap from public nodes (minimal list for local networks)
 bootstrap_nodes = (
-    { // Tox1
+    {
         address = "tox.verdict.gg"
         port = 33445
         public_key = "1C5293AEF2114717547B39DA8EA6F1E331E5E358B35F9B6B5F19317911C5F976"
     },
-    { // Tox2  
-        address = "tox2.abilinski.com"
+    {
+        address = "bootstrap.tox.chat"
         port = 33445
-        public_key = "7A6098B590BDC73F9723FC59F82B3F9085A64D1B213AAF8E610FD351930D052D"
-    },
-    { // Tox3
-        address = "tox.plastiras.org"
-        port = 33445
-        public_key = "8E8B63299B3D520FB377FE5100E65E3322F7AE5B20A0ACED2981769FC5B43725"
+        public_key = "3F0A45A268367C1BEA652F258C85F4A66DA76BCAA667A49E770BCC4917AB6A25"
     }
 )
 EOF
 
-# Show bootstrap info on startup
-echo "============================================="
-echo "Tox Bootstrap Node Starting"
-echo "============================================="
-echo "Port: $TOX_PORT (TCP/UDP)"
-echo "Data Directory: $TOX_DATA_DIR"
-echo "Log Level: $TOX_LOG_LEVEL"
-echo "MOTD: $TOX_MOTD"
-echo "User: $(id -u):$(id -g)"
-echo "Use su-exec: $USE_SU_EXEC"
-
-# Get and display public key
-if [ -f "$TOX_DATA_DIR/keys" ]; then
-    echo "---------------------------------------------"
-    echo "Bootstrap Node Info:"
-    # Extract public key (first 64 chars of the keys file when hex-dumped)
-    if [ "$USE_SU_EXEC" = "true" ]; then
-        PUBLIC_KEY=$(su-exec "$TOX_UID:$TOX_GID" od -A n -t x1 -j 0 -N 32 "$TOX_DATA_DIR/keys" | tr -d ' \n' | tr '[:lower:]' '[:upper:]')
-    else
-        PUBLIC_KEY=$(od -A n -t x1 -j 0 -N 32 "$TOX_DATA_DIR/keys" | tr -d ' \n' | tr '[:lower:]' '[:upper:]')
-    fi
+# Display node information
+if [ -f keys ]; then
+    echo "=== Node Information ==="
+    echo "Port: $TOX_PORT (TCP/UDP)"
+    echo "Data: $TOX_DATA_DIR"
+    echo "MOTD: $TOX_MOTD"
+    
+    # Extract and display public key
+    PUBLIC_KEY=$(od -A n -t x1 -j 0 -N 32 keys | tr -d ' \n' | tr '[:lower:]' '[:upper:]')
     echo "Public Key: $PUBLIC_KEY"
+    echo ""
     echo "Add this node to your Tox client:"
     echo "  Address: <your-server-ip>"
-    echo "  Port: $TOX_PORT"  
+    echo "  Port: $TOX_PORT"
     echo "  Public Key: $PUBLIC_KEY"
-    echo "---------------------------------------------"
+    echo "========================="
 fi
 
 echo "Starting tox-bootstrapd..."
-echo "============================================="
 
-# Start the daemon
-if [ "$USE_SU_EXEC" = "true" ]; then
-    exec su-exec "$TOX_UID:$TOX_GID" tox-bootstrapd \
-        --config="/tmp/tox-bootstrapd.conf" \
-        --log-backend=stdout \
-        --foreground
-else
-    exec tox-bootstrapd \
-        --config="/tmp/tox-bootstrapd.conf" \
-        --log-backend=stdout \
-        --foreground
-fi
+# Start the daemon in foreground mode
+exec tox-bootstrapd \
+    --config="$TOX_DATA_DIR/tox-bootstrapd.conf" \
+    --log-backend=stdout \
+    --foreground
