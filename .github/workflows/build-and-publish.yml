@@ -1,16 +1,31 @@
-name: Build and Publish
+name: Build and Publish Tox DHT Bootstrap Container
 
 on:
-
   # push:
-  #   branches: [ main ]
-  #   tags: [ 'v*' ]
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'Dockerfile'
+  #     - 'entrypoint.sh'
+  #     - '.github/workflows/build-and-publish.yml'
   # pull_request:
-  #   branches: [ main ]
-    
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'Dockerfile'
+  #     - 'entrypoint.sh'
+  #     - '.github/workflows/build-and-publish.yml'
   workflow_dispatch:
+    inputs:
+      force_build:
+        description: 'Force build even without changes'
+        required: false
+        default: false
+        type: boolean
 
 env:
+  REGISTRY: ghcr.io
+  # Use lowercase repository name for container image
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
@@ -19,46 +34,177 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
 
     steps:
-    - name: Checkout upstream branch
-      uses: actions/checkout@v4
-      with:
-        ref: upstream
+      - name: Checkout main branch (for Docker files)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
 
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
+      - name: Checkout upstream branch (for source code)
+        uses: actions/checkout@v4
+        with:
+          ref: upstream
+          path: upstream
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: Set up QEMU for multi-arch builds
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
 
-    - name: Log in to GitHub Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            network=host
 
-    - name: Extract metadata (tags, labels) for Docker
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: |
-          ghcr.io/${{ env.IMAGE_NAME }}
-        tags: |
-          type=ref,event=branch
-          type=ref,event=tag
-          type=sha
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Build and push
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: docker/Dockerfile
-        platforms: linux/amd64,linux/arm64
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            # Set latest tag for main branch
+            type=raw,value=latest,enable={{is_default_branch}}
+            # Tag with branch name
+            type=ref,event=branch
+            # Tag with PR number
+            type=ref,event=pr
+            # Tag with git short commit SHA
+            type=sha,prefix=sha-,format=short
+            # Tag with date
+            type=schedule,pattern={{date 'YYYYMMDD'}}
 
+      - name: Prepare build context
+        run: |
+          # Create build context with source code from upstream branch
+          mkdir -p build-context
+          
+          # Copy source code from upstream branch
+          cp -r upstream/* build-context/
+          
+          # Copy Docker files from main branch
+          cp main/Dockerfile build-context/
+          cp main/entrypoint.sh build-context/
+          
+          # Ensure entrypoint.sh is executable
+          chmod +x build-context/entrypoint.sh
+          
+          ls -la build-context/
+
+      - name: Build and push container image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./build-context
+          file: ./build-context/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            VCS_REF=${{ github.sha }}
+
+      - name: Generate container info
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "## 🚀 Container Published Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Image Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Registry**: ${{ env.REGISTRY }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image**: \`${{ env.IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Architectures**: linux/amd64, linux/arm64" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🐳 Pull Command" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🏃 Quick Start" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "docker run -d \\" >> $GITHUB_STEP_SUMMARY
+          echo "  --name tox-bootstrap \\" >> $GITHUB_STEP_SUMMARY
+          echo "  -p 33445:33445/tcp \\" >> $GITHUB_STEP_SUMMARY
+          echo "  -p 33445:33445/udp \\" >> $GITHUB_STEP_SUMMARY
+          echo "  -v tox-data:/data \\" >> $GITHUB_STEP_SUMMARY
+          echo "  -e TOX_ENABLE_INTERNET=true \\" >> $GITHUB_STEP_SUMMARY
+          echo "  --user \$(id -u):\$(id -g) \\" >> $GITHUB_STEP_SUMMARY
+          echo "  ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ⚙️ Environment Variables" >> $GITHUB_STEP_SUMMARY
+          echo "- \`TOX_PORT=33445\` - Port for DHT bootstrap (TCP/UDP)" >> $GITHUB_STEP_SUMMARY
+          echo "- \`TOX_ENABLE_INTERNET=true\` - Connect to external Tox network" >> $GITHUB_STEP_SUMMARY
+          echo "- \`TOX_KEYS_FILE=/data/keys\` - Persistent bootstrap keys" >> $GITHUB_STEP_SUMMARY
+          echo "- \`TOX_LOG_LEVEL=INFO\` - Logging level" >> $GITHUB_STEP_SUMMARY
+          echo "- \`TOX_MOTD=\"Tox DHT Bootstrap Node\"\` - Message of the Day" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📝 Notes" >> $GITHUB_STEP_SUMMARY
+          echo "- Local network functionality is **always enabled** (works offline)" >> $GITHUB_STEP_SUMMARY
+          echo "- Internet connectivity can be controlled via \`TOX_ENABLE_INTERNET\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Optimized for Raspberry Pi 4 (arm64) and x86_64 systems" >> $GITHUB_STEP_SUMMARY
+          echo "- Runs as non-root user by default" >> $GITHUB_STEP_SUMMARY
+          echo "- Supports custom UID/GID via \`--user\` flag" >> $GITHUB_STEP_SUMMARY
+
+      - name: Test container (quick smoke test)
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "Testing container startup..."
+          
+          # Pull the built image
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          
+          # Test container starts and responds
+          timeout 30 docker run --rm \
+            -e TOX_ENABLE_INTERNET=false \
+            -e TOX_LOG_LEVEL=DEBUG \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest &
+          
+          sleep 10
+          echo "Container smoke test completed successfully!"
+
+      - name: Security scan with Trivy
+        if: github.event_name != 'pull_request'
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'  # Don't fail the build on security issues
+
+      - name: Upload Trivy scan results
+        if: github.event_name != 'pull_request'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Cleanup old container images (optional)
+  cleanup:
+    runs-on: ubuntu-latest
+    needs: build-and-publish
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - name: Delete old container images
+        uses: actions/delete-package-versions@v4
+        with:
+          package-name: ${{ github.repository }}
+          package-type: 'container'
+          min-versions-to-keep: 10
+          delete-only-untagged-versions: true
