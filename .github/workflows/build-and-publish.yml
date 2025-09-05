@@ -89,8 +89,9 @@ jobs:
           # Create build context with source code from upstream branch
           mkdir -p build-context
           
-          # Copy source code from upstream branch
+          # Copy source code from upstream branch (including submodules)
           cp -r upstream/* build-context/
+          cp -r upstream/.git* build-context/ || true  # Copy git files for submodules
           
           # Copy Docker files from main branch
           cp main/Dockerfile build-context/
@@ -99,7 +100,15 @@ jobs:
           # Ensure entrypoint.sh is executable
           chmod +x build-context/entrypoint.sh
           
+          # List contents for debugging
+          echo "Build context contents:"
           ls -la build-context/
+          
+          # Check if submodules exist
+          if [ -d "build-context/third_party" ]; then
+            echo "Third party dependencies:"
+            ls -la build-context/third_party/
+          fi
 
       - name: Build and push container image
         uses: docker/build-push-action@v5
