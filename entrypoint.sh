@@ -153,12 +153,19 @@ main() {
     cmd_args=$(build_args)
     
     log "Configuration:"
-    log "  Port: ${TOX_PORT} (TCP/UDP)"
-    log "  Keys file: ${TOX_KEYS_FILE}"
-    log "  Log level: ${TOX_LOG_LEVEL}"
-    log "  MOTD: ${TOX_MOTD}"
+    log "  Port: ${TOX_PORT} (TCP/UDP)"  
+    log "  Keys directory: /data"
     log "  Internet: ${TOX_ENABLE_INTERNET}"
     log "  User: $(id -u):$(id -g)"
+    
+    if [ "${TOX_ENABLE_INTERNET}" = "true" ]; then
+        log "  Bootstrap nodes: External Tox network enabled"
+        get_bootstrap_nodes | while read -r line; do
+            log "    Node: $line"
+        done
+    else
+        log "  Bootstrap nodes: Local network only"
+    fi
     
     # Setup signal handling
     trap_signals
