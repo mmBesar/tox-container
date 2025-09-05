@@ -1,4 +1,4 @@
-# Multi-stage build for minimal runtime container
+# Use a minimal base image for both architectures
 FROM alpine:3.18 AS builder
 
 # Install build dependencies
@@ -6,75 +6,82 @@ RUN apk add --no-cache \
     build-base \
     cmake \
     git \
-    pkgconfig \
+    autoconf \
+    automake \
+    libtool \
+    check-dev \
     libsodium-dev \
-    opus-dev \
-    libvpx-dev \
     libconfig-dev \
-    linux-headers
+    libopus-dev \
+    libvpx-dev \
+    libavutil-dev \
+    libavcodec-dev \
+    libavformat-dev \
+    libswresample-dev \
+    libswscale-dev \
+    openssl-dev \
+    python3
 
-# Set working directory
-WORKDIR /build
+# Copy the source code from the upstream branch (will be built in context)
+WORKDIR /tmp
+COPY . /tmp/c-toxcore/
 
-# Copy source code
-COPY . .
-
-# Initialize submodules if not already done
-RUN git submodule update --init --recursive || true
-
-# Configure and build
-RUN mkdir -p _build && cd _build && \
+# Build with minimal features for reduced size
+WORKDIR /tmp/c-toxcore
+RUN mkdir build && cd build && \
     cmake .. \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_INSTALL_PREFIX=/usr/local \
-        -DBUILD_TOXAV=ON \
-        -DENABLE_STATIC=OFF \
-        -DENABLE_SHARED=ON \
-        -DBOOTSTRAP_DAEMON=ON \
-        -DAUTOTEST=OFF \
-        -DBUILD_MISC_TESTS=OFF \
-        -DBUILD_FUN_UTILS=OFF && \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DBUILD_TESTING=OFF \
+        -DBOOTSTRAP_DAEMON=OFF \
+        -DDHT_BOOTSTRAP=OFF \
+        -DUSE_IPV6=OFF \
+        && \
     make -j$(nproc) && \
-    make install DESTDIR=/toxcore-install
+    make install
 
-# Runtime stage - minimal Alpine image
+# Create final minimal image
 FROM alpine:3.18
-
-LABEL maintainer="Local Toxcore Network" \
-      description="Lightweight Toxcore bootstrap daemon for local networks" \
-      version="latest"
 
 # Install runtime dependencies only
 RUN apk add --no-cache \
     libsodium \
-    opus \
-    libvpx \
     libconfig \
-    ca-certificates \
-    && rm -rf /var/cache/apk/*
+    libopus \
+    libvpx \
+    libavutil \
+    libavcodec \
+    libavformat \
+    libswresample \
+    libswscale \
+    openssl
 
-# Copy built toxcore from builder stage
-COPY --from=builder /toxcore-install/usr/local /usr/local
+# Copy built binaries from builder
+COPY --from=builder /usr/bin/tox* /usr/bin/
 
-# Create toxcore user and directories
-RUN adduser -D -s /bin/sh toxcore && \
-    mkdir -p /var/lib/tox-bootstrapd /var/log/tox-bootstrapd /etc/tox-bootstrapd && \
-    chown -R toxcore:toxcore /var/lib/tox-bootstrapd /var/log/tox-bootstrapd /etc/tox-bootstrapd
+# Create non-root user
+RUN addgroup -g 1000 -S toxcore && \
+    adduser -u 1000 -S toxcore -G toxcore
 
-# Copy configuration and entrypoint
-COPY config/tox-bootstrapd.conf /etc/tox-bootstrapd/
-COPY entrypoint.sh /usr/local/bin/
+# Create data directory
+RUN mkdir -p /data && chown toxcore:toxcore /data
+
+# Copy entrypoint script
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-# Expose ports for DHT
-EXPOSE 33445/tcp 33445/udp
+# Set environment variables with defaults
+ENV TOXCORE_DATA_DIR=/data
+ENV TOXCORE_PORT=33445
+ENV TOXCORE_ENABLE_IPV6=false
+ENV TOXCORE_ENABLE_TCP_RELAY=true
+ENV TOXCORE_ENABLE_UDP_RELAY=true
+ENV TOXCORE_LOG_LEVEL=INFO
 
-# Use non-root user
+# Expose default port
+EXPOSE 33445
+
+# Switch to non-root user
 USER toxcore
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD pidof tox-bootstrapd || exit 1
-
+# Set entrypoint
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["tox-bootstrapd", "--foreground", "--config", "/etc/tox-bootstrapd/tox-bootstrapd.conf"]
