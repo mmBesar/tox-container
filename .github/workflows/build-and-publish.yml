@@ -16,30 +16,15 @@ env:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     permissions:
       contents: read
       packages: write
 
     steps:
-    - name: Checkout main branch
-      uses: actions/checkout@v4
-      with:
-        ref: main
-        path: main
-
     - name: Checkout upstream branch
       uses: actions/checkout@v4
       with:
         ref: upstream
-        path: upstream
-
-    - name: Combine branches for build context
-      run: |
-        # Copy Dockerfile and entrypoint from main branch
-        cp -r main/Dockerfile main/entrypoint.sh upstream/
-        # Set the build context to the upstream directory
-        mv upstream /tmp/build-context
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
@@ -68,48 +53,12 @@ jobs:
     - name: Build and push
       uses: docker/build-push-action@v5
       with:
-        context: /tmp/build-context
+        context: .
+        file: docker/Dockerfile
         platforms: linux/amd64,linux/arm64
-        push: ${{ github.event_name != 'pull_request' }}
+        push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
-  test-build:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-
-    steps:
-    - name: Checkout main branch
-      uses: actions/checkout@v4
-      with:
-        ref: main
-        path: main
-
-    - name: Checkout upstream branch
-      uses: actions/checkout@v4
-      with:
-        ref: upstream
-        path: upstream
-
-    - name: Combine branches for build context
-      run: |
-        cp -r main/Dockerfile main/entrypoint.sh upstream/
-        mv upstream /tmp/build-context
-
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Build without push
-      uses: docker/build-push-action@v5
-      with:
-        context: /tmp/build-context
-        platforms: linux/amd64,linux/arm64
-        push: false
-        tags: ghcr.io/${{ github.repository }}:pr-${{ github.event.number }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
