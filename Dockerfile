@@ -1,87 +1,102 @@
-# Use a minimal base image for both architectures
-FROM alpine:3.18 AS builder
+# Multi-stage build for c-toxcore DHT bootstrap node
+# Supports arm64 and amd64 architectures
+
+# Build stage
+FROM alpine:3.20 as builder
 
 # Install build dependencies
 RUN apk add --no-cache \
     build-base \
     cmake \
+    ninja \
     git \
-    autoconf \
-    automake \
-    libtool \
-    check-dev \
+    pkgconfig \
     libsodium-dev \
-    libconfig-dev \
-    libopus-dev \
-    libvpx-dev \
-    libavutil-dev \
-    libavcodec-dev \
-    libavformat-dev \
-    libswresample-dev \
-    libswscale-dev \
-    openssl-dev \
-    python3
+    linux-headers
 
-# Copy the source code from the upstream branch (will be built in context)
-WORKDIR /tmp
-COPY . /tmp/c-toxcore/
+# Create build directory
+WORKDIR /build
 
-# Build with minimal features for reduced size
-WORKDIR /tmp/c-toxcore
-RUN mkdir build && cd build && \
-    cmake .. \
-        -DCMAKE_INSTALL_PREFIX=/usr \
-        -DBUILD_TESTING=OFF \
-        -DBOOTSTRAP_DAEMON=OFF \
-        -DDHT_BOOTSTRAP=OFF \
-        -DUSE_IPV6=OFF \
-        && \
-    make -j$(nproc) && \
-    make install
+# Clone the upstream branch (source code)
+# Note: In CI, this will be replaced by copying from the upstream branch
+ARG TARGETARCH
+COPY . /build/
 
-# Create final minimal image
-FROM alpine:3.18
+# Initialize git submodules if present
+RUN if [ -f .gitmodules ]; then \
+        git submodule update --init --recursive || true; \
+    fi
 
-# Install runtime dependencies only
+# Configure CMake build
+# - Only build DHT_bootstrap (disable toxav, bootstrap daemon, etc.)
+# - Static build for minimal runtime dependencies
+# - Release build for optimization
+RUN cmake -B _build -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr/local \
+    -DENABLE_SHARED=OFF \
+    -DENABLE_STATIC=ON \
+    -DBUILD_TOXAV=OFF \
+    -DBOOTSTRAP_DAEMON=OFF \
+    -DDHT_BOOTSTRAP=ON \
+    -DAUTOTEST=OFF \
+    -DUNITTEST=OFF \
+    -DBUILD_MISC_TESTS=OFF \
+    -DBUILD_FUN_UTILS=OFF \
+    -DFULLY_STATIC=ON \
+    -DSTRICT_ABI=ON
+
+# Build the project
+RUN cmake --build _build --parallel $(nproc)
+
+# Install to staging area
+RUN cmake --build _build --target install
+
+# Runtime stage - minimal Alpine image
+FROM alpine:3.20
+
+# Install runtime dependencies (minimal)
 RUN apk add --no-cache \
     libsodium \
-    libconfig \
-    libopus \
-    libvpx \
-    libavutil \
-    libavcodec \
-    libavformat \
-    libswresample \
-    libswscale \
-    openssl
-
-# Copy built binaries from builder
-COPY --from=builder /usr/bin/tox* /usr/bin/
+    su-exec \
+    tini
 
 # Create non-root user
 RUN addgroup -g 1000 -S toxcore && \
     adduser -u 1000 -S toxcore -G toxcore
 
-# Create data directory
-RUN mkdir -p /data && chown toxcore:toxcore /data
+# Copy the DHT_bootstrap binary from builder stage
+COPY --from=builder /usr/local/bin/DHT_bootstrap /usr/local/bin/DHT_bootstrap
+
+# Ensure binary is executable
+RUN chmod +x /usr/local/bin/DHT_bootstrap
 
 # Copy entrypoint script
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-# Set environment variables with defaults
-ENV TOXCORE_DATA_DIR=/data
-ENV TOXCORE_PORT=33445
-ENV TOXCORE_ENABLE_IPV6=false
-ENV TOXCORE_ENABLE_TCP_RELAY=true
-ENV TOXCORE_ENABLE_UDP_RELAY=true
-ENV TOXCORE_LOG_LEVEL=INFO
+# Create data directory for persistent keys
+RUN mkdir -p /data && chown toxcore:toxcore /data
 
-# Expose default port
-EXPOSE 33445
+# Expose both TCP and UDP on port 33445
+EXPOSE 33445/tcp 33445/udp
 
-# Switch to non-root user
+# Set default environment variables
+ENV TOX_PORT=33445
+ENV TOX_ENABLE_INTERNET=true
+ENV TOX_KEYS_FILE=/data/keys
+ENV TOX_LOG_LEVEL=INFO
+ENV TOX_MOTD="Tox DHT Bootstrap Node"
+
+# Use tini as init system
+ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/entrypoint.sh"]
+
+# Default user (can be overridden with --user in docker-compose)
 USER toxcore
 
-# Set entrypoint
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+# Volume for persistent data
+VOLUME ["/data"]
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD netstat -ln | grep -q ":${TOX_PORT:-33445}" || exit 1
