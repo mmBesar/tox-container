@@ -12,6 +12,7 @@ RUN apk add --no-cache \
     git \
     pkgconfig \
     libsodium-dev \
+    libsodium-static \
     linux-headers
 
 # Create build directory
@@ -67,8 +68,10 @@ RUN apk add --no-cache \
 RUN addgroup -g 1000 -S toxcore && \
     adduser -u 1000 -S toxcore -G toxcore
 
-# Copy the DHT_bootstrap binary from builder stage
+# Copy the DHT_bootstrap binary and required libraries from builder stage
 COPY --from=builder /usr/local/bin/DHT_bootstrap /usr/local/bin/DHT_bootstrap
+COPY --from=builder /usr/local/lib/libtoxcore.so* /usr/local/lib/
+COPY --from=builder /usr/lib/libsodium.so* /usr/lib/
 
 # Ensure binary is executable
 RUN chmod +x /usr/local/bin/DHT_bootstrap
