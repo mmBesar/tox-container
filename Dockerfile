@@ -31,12 +31,14 @@ RUN if [ -f .gitmodules ]; then \
 # - Only build DHT_bootstrap (disable toxav, bootstrap daemon, etc.)
 # - Static build for minimal runtime dependencies
 # - Release build for optimization
+# - Disable toxav dependencies (opus, vpx) completely
 RUN cmake -B _build -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=/usr/local \
     -DENABLE_SHARED=OFF \
     -DENABLE_STATIC=ON \
     -DBUILD_TOXAV=OFF \
+    -DMUST_BUILD_TOXAV=OFF \
     -DBOOTSTRAP_DAEMON=OFF \
     -DDHT_BOOTSTRAP=ON \
     -DAUTOTEST=OFF \
