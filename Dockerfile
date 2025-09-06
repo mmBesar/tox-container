@@ -71,8 +71,13 @@ RUN apk add --no-cache \
 RUN addgroup -g 1000 -S toxcore && \
     adduser -u 1000 -S toxcore -G toxcore
 
-# Copy the DHT_bootstrap binary from builder stage
-COPY --from=builder /build/_build/other/bootstrap_daemon/DHT_bootstrap /usr/local/bin/DHT_bootstrap
+# Copy the DHT_bootstrap binary from builder stage (find correct location)
+RUN DHT_BOOTSTRAP_PATH=$(find /build/_build -name "DHT_bootstrap*" -type f -executable | head -1) && \
+    if [ -n "$DHT_BOOTSTRAP_PATH" ]; then \
+        cp "$DHT_BOOTSTRAP_PATH" /usr/local/bin/DHT_bootstrap; \
+    else \
+        echo "ERROR: DHT_bootstrap binary not found!" && exit 1; \
+    fi
 
 # Ensure binary is executable and test it
 RUN chmod +x /usr/local/bin/DHT_bootstrap && \
