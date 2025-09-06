@@ -2,7 +2,7 @@
 # Supports arm64 and amd64 architectures
 
 # Build stage
-FROM alpine:3.20 as builder
+FROM alpine:3.20 AS builder
 
 # Install build dependencies
 RUN apk add --no-cache \
@@ -27,7 +27,7 @@ RUN if [ -f .gitmodules ]; then \
     fi
 
 # Configure CMake build
-# Focus only on DHT_bootstrap with minimal dependencies
+# Enable BUILD_FUN_UTILS to build DHT_bootstrap utility
 RUN cmake -B _build -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=/usr/local \
@@ -36,18 +36,35 @@ RUN cmake -B _build -G Ninja \
     -DBUILD_TOXAV=OFF \
     -DMUST_BUILD_TOXAV=OFF \
     -DBOOTSTRAP_DAEMON=OFF \
-    -DDHT_BOOTSTRAP=ON \
     -DAUTOTEST=OFF \
     -DUNITTEST=OFF \
     -DBUILD_MISC_TESTS=OFF \
-    -DBUILD_FUN_UTILS=OFF \
+    -DBUILD_FUN_UTILS=ON \
     -DSTRICT_ABI=ON
 
 # Build the project
-RUN cmake --build _build --parallel $(nproc) --target DHT_bootstrap
+RUN cmake --build _build --parallel $(nproc)
 
-# Verify the binary was built
-RUN ls -la _build/other/bootstrap_daemon/DHT_bootstrap
+# Find and debug DHT_bootstrap binary location
+RUN echo "=== Build completed, searching for DHT_bootstrap ===" && \
+    find _build -type f -executable -name "*bootstrap*" -o -name "*DHT*" | head -20 && \
+    echo "=== Directory structure ===" && \
+    find _build -type d -name "*fun*" -o -name "*other*" | head -10 && \
+    echo "=== All executables in build ===" && \
+    find _build -type f -executable | head -10
+
+# Copy DHT_bootstrap to a predictable location for the next stage
+RUN DHT_BOOTSTRAP_PATH=$(find _build -name "DHT_bootstrap*" -type f -executable | head -1) && \
+    if [ -n "$DHT_BOOTSTRAP_PATH" ]; then \
+        echo "Found DHT_bootstrap at: $DHT_BOOTSTRAP_PATH" && \
+        cp "$DHT_BOOTSTRAP_PATH" /usr/local/bin/DHT_bootstrap && \
+        chmod +x /usr/local/bin/DHT_bootstrap && \
+        ls -la /usr/local/bin/DHT_bootstrap; \
+    else \
+        echo "ERROR: DHT_bootstrap binary not found! Available executables:" && \
+        find _build -type f -executable | head -20 && \
+        exit 1; \
+    fi
 
 # Runtime stage - minimal Alpine image
 FROM alpine:3.20
@@ -71,13 +88,8 @@ RUN apk add --no-cache \
 RUN addgroup -g 1000 -S toxcore && \
     adduser -u 1000 -S toxcore -G toxcore
 
-# Copy the DHT_bootstrap binary from builder stage (find correct location)
-RUN DHT_BOOTSTRAP_PATH=$(find /build/_build -name "DHT_bootstrap*" -type f -executable | head -1) && \
-    if [ -n "$DHT_BOOTSTRAP_PATH" ]; then \
-        cp "$DHT_BOOTSTRAP_PATH" /usr/local/bin/DHT_bootstrap; \
-    else \
-        echo "ERROR: DHT_bootstrap binary not found!" && exit 1; \
-    fi
+# Copy the DHT_bootstrap binary from builder stage
+COPY --from=builder /usr/local/bin/DHT_bootstrap /usr/local/bin/DHT_bootstrap
 
 # Ensure binary is executable and test it
 RUN chmod +x /usr/local/bin/DHT_bootstrap && \
