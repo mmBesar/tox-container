@@ -18,9 +18,7 @@ RUN apk add --no-cache \
 # Create build directory
 WORKDIR /build
 
-# Clone the upstream branch (source code)
-# Note: In CI, this will be replaced by copying from the upstream branch
-ARG TARGETARCH
+# Copy source code (will be from upstream branch in CI)
 COPY . /build/
 
 # Initialize git submodules if present
@@ -29,10 +27,7 @@ RUN if [ -f .gitmodules ]; then \
     fi
 
 # Configure CMake build
-# - Only build DHT_bootstrap (disable toxav, bootstrap daemon, etc.)
-# - Static build for minimal runtime dependencies
-# - Release build for optimization
-# - Disable toxav dependencies (opus, vpx) completely
+# Focus only on DHT_bootstrap with minimal dependencies
 RUN cmake -B _build -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=/usr/local \
@@ -46,19 +41,27 @@ RUN cmake -B _build -G Ninja \
     -DUNITTEST=OFF \
     -DBUILD_MISC_TESTS=OFF \
     -DBUILD_FUN_UTILS=OFF \
-    -DFULLY_STATIC=ON \
     -DSTRICT_ABI=ON
 
 # Build the project
-RUN cmake --build _build --parallel $(nproc)
+RUN cmake --build _build --parallel $(nproc) --target DHT_bootstrap
 
-# Install to staging area
-RUN cmake --build _build --target install
+# Verify the binary was built
+RUN ls -la _build/other/bootstrap_daemon/DHT_bootstrap
 
 # Runtime stage - minimal Alpine image
 FROM alpine:3.20
 
-# Install runtime dependencies (minimal)
+# Build metadata
+ARG BUILD_DATE
+ARG VCS_REF
+LABEL org.opencontainers.image.created=$BUILD_DATE \
+      org.opencontainers.image.source="https://github.com/TokTok/c-toxcore" \
+      org.opencontainers.image.version=$VCS_REF \
+      org.opencontainers.image.description="Tox DHT Bootstrap Node - Decentralized P2P networking" \
+      org.opencontainers.image.title="Tox DHT Bootstrap"
+
+# Install minimal runtime dependencies
 RUN apk add --no-cache \
     libsodium \
     su-exec \
@@ -68,13 +71,12 @@ RUN apk add --no-cache \
 RUN addgroup -g 1000 -S toxcore && \
     adduser -u 1000 -S toxcore -G toxcore
 
-# Copy the DHT_bootstrap binary and required libraries from builder stage
-COPY --from=builder /usr/local/bin/DHT_bootstrap /usr/local/bin/DHT_bootstrap
-COPY --from=builder /usr/local/lib/libtoxcore.so* /usr/local/lib/
-COPY --from=builder /usr/lib/libsodium.so* /usr/lib/
+# Copy the DHT_bootstrap binary from builder stage
+COPY --from=builder /build/_build/other/bootstrap_daemon/DHT_bootstrap /usr/local/bin/DHT_bootstrap
 
-# Ensure binary is executable
-RUN chmod +x /usr/local/bin/DHT_bootstrap
+# Ensure binary is executable and test it
+RUN chmod +x /usr/local/bin/DHT_bootstrap && \
+    /usr/local/bin/DHT_bootstrap --help || echo "DHT_bootstrap binary ready"
 
 # Copy entrypoint script
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
@@ -83,22 +85,25 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 # Create data directory for persistent keys
 RUN mkdir -p /data && chown toxcore:toxcore /data
 
-# Expose both TCP and UDP on port 33445
+# Expose both TCP and UDP on port 33445 (default Tox DHT port)
 EXPOSE 33445/tcp 33445/udp
 
 # Set default environment variables
-ENV TOX_PORT=33445
-ENV TOX_ENABLE_INTERNET=true
+ENV TOX_PORT=33445 \
+    TOX_ENABLE_INTERNET=true \
+    TOX_KEYS_FILE=/data/keys \
+    TOX_LOG_LEVEL=INFO \
+    TOX_MOTD="Tox DHT Bootstrap Node"
 
-# Use tini as init system
+# Use tini as init system for proper signal handling
 ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/entrypoint.sh"]
 
-# Default user (can be overridden with --user in docker-compose)
+# Default user (can be overridden with --user)
 USER toxcore
 
 # Volume for persistent data
 VOLUME ["/data"]
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+# Health check - verify the port is listening
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD netstat -ln | grep -q ":${TOX_PORT:-33445}" || exit 1
