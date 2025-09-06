@@ -89,9 +89,6 @@ EXPOSE 33445/tcp 33445/udp
 # Set default environment variables
 ENV TOX_PORT=33445
 ENV TOX_ENABLE_INTERNET=true
-ENV TOX_KEYS_FILE=/data/keys
-ENV TOX_LOG_LEVEL=INFO
-ENV TOX_MOTD="Tox DHT Bootstrap Node"
 
 # Use tini as init system
 ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/entrypoint.sh"]
