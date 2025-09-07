@@ -19,9 +19,9 @@ on:
   #     - 'entrypoint.sh'
   #     - '.github/workflows/build-and-publish.yml'
   workflow_dispatch:
-  schedule:
-    # Rebuild weekly to get latest upstream changes and security updates
-    - cron: '0 2 * * 0'  # Every Sunday at 2 AM UTC
+  # schedule:
+  #   # Rebuild weekly to get latest upstream changes and security updates
+  #   - cron: '0 2 * * 0'  # Every Sunday at 2 AM UTC
 
 env:
   REGISTRY: ghcr.io
