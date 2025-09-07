@@ -1,30 +1,248 @@
-version: '3.8'
+# Tox Bootstrap Daemon - Docker Compose Configuration
+# This file provides a comprehensive setup for running a Tox bootstrap node
+# that can serve both local clients (when internet is down) and bridge
+# local clients to the global Tox network.
 
 services:
-  tox:
-    image: ghcr.io/mmbesar/tox-container:latest
-    container_name: tox
-    user: "1000:1000"  # Critical: container expects to run as tox user
-    networks:
-      - ${NETWORK}
-    environment:
-      TZ: ${TZ}
-      TOX_PORT: 33445
-      TOX_MOTD: "Local Tox Bootstrap Node"
-    volumes:
-      - ${CONTAINER_DIR}/tox/data:/var/lib/tox-bootstrapd
-    ports:
-      - "33445:33445/tcp"
-      - "33445:33445/udp"
+  tox-bootstrap:
+    # Use the image built from your repository
+    # Replace 'your-username/your-repo-name' with your actual GitHub repo
+    image: ghcr.io/your-username/your-repo-name:latest
+    container_name: tox-bootstrap-node
     restart: unless-stopped
     
-    # Optional: Add health check
+    # Network Configuration
+    ports:
+      # Main Tox port (UDP and TCP)
+      - "33445:33445/udp"
+      - "33445:33445/tcp"
+      # Additional TCP relay ports (optional)
+      # - "33446:33446/tcp"
+      # - "33447:33447/tcp"
+    
+    # Volume mounts for persistence
+    volumes:
+      # Persist DHT keys, config, and bootstrap info
+      - ./tox-data:/data
+      # Optional: Mount custom config file
+      # - ./custom-tox-bootstrapd.conf:/data/tox-bootstrapd.conf:ro
+    
+    # User/Group mapping for file permissions
+    # Match your host user to avoid permission issues
+    user: "1000:1000"  # Change to your UID:GID
+    
+    # Environment Variables - Customize your bootstrap node
+    environment:
+      # === NETWORK CONFIGURATION ===
+      # Main Tox port (UDP + TCP)
+      TOX_PORT: 33445
+      
+      # Enable IPv6 support (true/false)
+      TOX_ENABLE_IPV6: "true"
+      
+      # Enable LAN discovery for local clients (true/false)
+      TOX_ENABLE_LAN_DISCOVERY: "true"
+      
+      # Enable TCP relay functionality (true/false)
+      TOX_ENABLE_TCP_RELAY: "true"
+      
+      # TCP relay ports (comma-separated)
+      TOX_TCP_RELAY_PORTS: "33445,33446,33447"
+      
+      # === BOOTSTRAP BEHAVIOR ===
+      # Connect to public Tox network? 
+      # - true: Online mode - bridges local to internet
+      # - false: Offline mode - local network only
+      TOX_ENABLE_PUBLIC_BOOTSTRAP: "true"
+      
+      # === NODE IDENTITY ===
+      # Friendly name for your bootstrap node
+      TOX_LOCAL_NODE_NAME: "Pi4 Home Bootstrap"
+      
+      # Location description
+      TOX_LOCAL_NODE_LOCATION: "Home Network"
+      
+      # Message of the Day (MOTD) 
+      TOX_MOTD: "Welcome to my local Tox bootstrap node!"
+      
+      # === LOGGING ===
+      # Log level: TRACE, DEBUG, INFO, WARNING, ERROR
+      TOX_LOG_LEVEL: "INFO"
+      
+      # Send logs to stdout for Docker logs (true/false)
+      TOX_LOG_TO_STDOUT: "true"
+      
+      # === BOOTSTRAP INFO GENERATION ===
+      # Generate JSON file for client auto-configuration (true/false)
+      TOX_GENERATE_BOOTSTRAP_INFO: "true"
+      
+      # Path to bootstrap info file (accessible via volume mount)
+      TOX_BOOTSTRAP_INFO_FILE: "/data/bootstrap_info.json"
+      
+      # === FILE PATHS ===
+      # DHT keys file (auto-generated and persisted)
+      TOX_KEYS_FILE: "/data/keys"
+      
+      # PID file location
+      TOX_PID_FILE: "/data/tox-bootstrapd.pid"
+      
+      # Configuration file location
+      TOX_CONFIG_FILE: "/data/tox-bootstrapd.conf"
+      
+      # === USER/PERMISSIONS ===
+      # Container user/group IDs (should match your host user)
+      TOX_USER_ID: "1000"
+      TOX_GROUP_ID: "1000"
+    
+    # Health check to ensure daemon is running
     healthcheck:
-      test: ["CMD", "netstat", "-tuln", "|", "grep", ":33445"]
+      test: ["CMD", "pgrep", "tox-bootstrapd"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 5s
+      start_period: 15s
+    
+    # Resource limits (adjust for Pi4)
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '1.0'
+        reservations:
+          memory: 64M
+          cpus: '0.25'
+    
+    # Security settings
+    security_opt:
+      - no-new-privileges:true
+    read_only: false  # Need write access to /data
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
 
+# ============================================================================
+# CONFIGURATION EXAMPLES
+# ============================================================================
+
+# --- OFFLINE MODE (Local Network Only) ---
+# Uncomment this service for a purely local bootstrap node
+# that doesn't connect to the internet
+#
+#  tox-bootstrap-offline:
+#    image: ghcr.io/your-username/your-repo-name:latest
+#    container_name: tox-bootstrap-offline
+#    restart: unless-stopped
+#    ports:
+#      - "33445:33445/udp"
+#      - "33445:33445/tcp"
+#    volumes:
+#      - ./tox-offline-data:/data
+#    user: "1000:1000"
+#    environment:
+#      TOX_ENABLE_PUBLIC_BOOTSTRAP: "false"  # KEY DIFFERENCE
+#      TOX_LOCAL_NODE_NAME: "Offline Bootstrap"
+#      TOX_MOTD: "Local-only bootstrap node"
+#      TOX_LOG_LEVEL: "INFO"
+
+# --- HIGH PERFORMANCE MODE ---
+# Uncomment this service for maximum performance
+# (useful for high-traffic scenarios)
+#
+#  tox-bootstrap-performance:
+#    image: ghcr.io/your-username/your-repo-name:latest
+#    container_name: tox-bootstrap-perf
+#    restart: unless-stopped
+#    ports:
+#      - "33445:33445/udp"
+#      - "33445:33445/tcp"
+#      - "33446-33450:33446-33450/tcp"  # More TCP relay ports
+#    volumes:
+#      - ./tox-perf-data:/data
+#    user: "1000:1000"
+#    environment:
+#      TOX_TCP_RELAY_PORTS: "33445,33446,33447,33448,33449,33450"
+#      TOX_LOG_LEVEL: "WARNING"  # Less verbose logging
+#      TOX_LOCAL_NODE_NAME: "High Performance Node"
+#    deploy:
+#      resources:
+#        limits:
+#          memory: 512M
+#          cpus: '2.0'
+
+# --- MONITORING STACK (Optional) ---
+# Uncomment these services to add monitoring capabilities
+#
+#  prometheus:
+#    image: prom/prometheus:latest
+#    container_name: tox-prometheus
+#    restart: unless-stopped
+#    ports:
+#      - "9090:9090"
+#    volumes:
+#      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+#      - prometheus-data:/prometheus
+#    command:
+#      - '--config.file=/etc/prometheus/prometheus.yml'
+#      - '--storage.tsdb.path=/prometheus'
+#      - '--web.console.libraries=/etc/prometheus/console_libraries'
+#      - '--web.console.templates=/etc/prometheus/consoles'
+#
+#  grafana:
+#    image: grafana/grafana:latest
+#    container_name: tox-grafana
+#    restart: unless-stopped
+#    ports:
+#      - "3000:3000"
+#    volumes:
+#      - grafana-data:/var/lib/grafana
+#    environment:
+#      GF_SECURITY_ADMIN_PASSWORD: "admin123"
+
+# Volumes for data persistence
 volumes:
-  tox-data:
+  prometheus-data:
+  grafana-data:
+
+# ============================================================================
+# USAGE INSTRUCTIONS
+# ============================================================================
+#
+# 1. FIRST TIME SETUP:
+#    - Update the image name: ghcr.io/your-username/your-repo-name:latest
+#    - Adjust user/group IDs to match your host system
+#    - Create data directory: mkdir -p ./tox-data && chmod 755 ./tox-data
+#
+# 2. START THE SERVICE:
+#    docker-compose up -d
+#
+# 3. VIEW LOGS:
+#    docker-compose logs -f tox-bootstrap
+#
+# 4. CHECK BOOTSTRAP INFO:
+#    cat ./tox-data/bootstrap_info.json
+#
+# 5. CONFIGURE CLIENTS:
+#    - aTox (Android): Import ./tox-data/bootstrap_info.json
+#    - qTox (Desktop): Use your local IP + port 33445
+#    - Toxic (CLI): Add your node to bootstrap list
+#
+# 6. MODES:
+#    - Online Mode: TOX_ENABLE_PUBLIC_BOOTSTRAP=true (default)
+#      Your local clients can reach internet clients through your node
+#    - Offline Mode: TOX_ENABLE_PUBLIC_BOOTSTRAP=false
+#      Only local network clients can connect to each other
+#
+# 7. MONITORING:
+#    - Check container health: docker-compose ps
+#    - View resource usage: docker stats tox-bootstrap-node
+#    - Network connectivity: netstat -tulpn | grep 33445
+#
+# 8. BACKUP:
+#    - Important files: ./tox-data/keys (DHT identity)
+#    - Optional: ./tox-data/bootstrap_info.json
+#
+# 9. SECURITY:
+#    - Keys file contains your node's identity - keep it secure
+#    - Consider firewall rules for external access
+#    - Monitor logs for unusual activity
+#
+# ============================================================================
