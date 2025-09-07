@@ -46,7 +46,7 @@ jobs:
 
       - name: Fetch all remote branches
         run: |
-          git fetch origin --all
+          git fetch --all
           echo "Available branches:"
           git branch -r
           echo "Available local branches:"
