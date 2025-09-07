@@ -1,177 +1,107 @@
-> # NOT READY YET!
-
 # Tox Bootstrap Node Container
 
-A lightweight, multi-architecture Docker container for running a Tox bootstrap node. Built from the official [TokTok/c-toxcore](https://github.com/TokTok/c-toxcore) repository with automatic upstream synchronization.
+🚧 **WORK IN PROGRESS** 🚧
 
-## Features
+This repository is currently under active development and **not ready for production use**.
 
-✅ **Multi-Architecture**: Supports AMD64 and ARM64 (perfect for Raspberry Pi 4)  
-✅ **Auto-Updates**: Follows upstream releases and provides nightly builds  
-✅ **Lightweight**: Alpine-based image (~50MB final size)  
-✅ **Secure**: Runs as non-root user (1000:1000)  
-✅ **Persistent**: Maintains keys and DHT state across restarts  
-✅ **Configurable**: Easy customization via environment variables
+## Current Status
 
-## Quick Start
+### ✅ Working
+- Multi-architecture container builds (arm64/amd64)
+- Basic tox-bootstrapd compilation and packaging
+- GitHub Actions CI/CD pipeline
+- Docker Compose configuration templates
 
-### Using Docker Compose (Recommended)
+### ⚠️ Known Issues
+- DHT key generation showing "Invalid argument" warnings
+- Bootstrap info JSON file not being generated correctly
+- Incomplete startup logging and error handling
+- Container restart loops in some configurations
 
-1. Update the image name in `docker-compose.yml`
-2. Start the container:
+### 🔨 In Development
+- Stable key generation process
+- Bootstrap node auto-configuration for aTox clients
+- Comprehensive environment variable configuration
+- Network connectivity validation
+- Documentation and usage examples
 
-```bash
-docker-compose up -d
-```
+## What This Will Be
 
-### Using Docker CLI
+A lightweight, Pi4-optimized Tox bootstrap node container that:
 
-```bash
-docker run -d \
-  --name tox-bootstrap \
-  -p 33445:33445/tcp \
-  -p 33445:33445/udp \
-  -v tox-data:/var/lib/tox-bootstrapd \
-  --user 1000:1000 \
-  --restart unless-stopped \
-  ghcr.io/mmBesar/tox-container:latest
-```
+- **Bridges local and internet Tox clients** - Connect local devices when internet is down, bridge to global network when online
+- **Auto-configures Tox clients** - Generates `bootstrap_info.json` for easy import into aTox and other clients  
+- **Highly configurable** - Control all aspects via environment variables
+- **Persistent** - Maintains DHT keys and network state across restarts
+- **Multi-architecture** - Native builds for x64 and ARM64 (Pi4 ready)
 
-## Configuration
+## Quick Start (When Ready)
 
-### Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `TOX_PORT` | `33445` | Bootstrap node port (TCP/UDP) |
-| `TOX_MOTD` | `Tox Bootstrap Node - Stay connected!` | Message of the day |
-| `TOX_LOG_LEVEL` | `info` | Logging level (debug, info, warn, error) |
-| `TOX_UID` | `1000` | User ID to run as |
-| `TOX_GID` | `1000` | Group ID to run as |
-
-### Custom Configuration
-
-You can mount a custom config file:
+**Note:** This doesn't work reliably yet. Use for testing only.
 
 ```bash
--v /path/to/your/tox-bootstrapd.conf:/etc/tox-bootstrapd/tox-bootstrapd.conf:ro
-```
-
-## Image Tags
-
-- `latest` - Latest stable release
-- `v0.2.x` - Specific version tags  
-- `nightly` - Latest development build
-- `nightly-YYYYMMDD` - Specific nightly build
-
-## Connecting Your Tox Client
-
-After starting the container, check the logs to get your bootstrap node info:
-
-```bash
-docker logs tox-bootstrap
-```
-
-Look for output like:
-```
-Bootstrap Node Info:
-Public Key: 1234567890ABCDEF...
-Add this node to your Tox client:
-  Address: your-server-ip
-  Port: 33445
-  Public Key: 1234567890ABCDEF...
-```
-
-Add these details to your Tox client's bootstrap nodes list.
-
-## Resource Usage
-
-Perfect for Raspberry Pi 4:
-- **Memory**: ~10-15MB RAM usage
-- **CPU**: Minimal (mostly network I/O)
-- **Storage**: <1GB total (including container)
-
-## Building Locally
-
-```bash
-git clone https://github.com/mmBesar/tox-container
+# Clone repository
+git clone https://github.com/mmBesar/tox-container.git
 cd tox-container
-docker build -t tox-bootstrap .
+
+# Update docker-compose.yml with your settings
+# Edit: image name, user IDs, paths, etc.
+
+# Start the bootstrap node
+docker-compose up -d
+
+# Check logs (will show errors currently)
+docker-compose logs -f tox
+
+# Check generated files (may be missing)
+ls -la ./tox-data/
 ```
 
-## Architecture
+## Repository Structure
 
-This repository maintains:
-- `main` branch: Container configuration files
-- `upstream` branch: Synchronized copy of TokTok/c-toxcore (updated daily)
+```
+├── Dockerfile                           # Multi-stage Alpine container build
+├── entrypoint.sh                        # Configuration generator and startup script
+├── docker-compose.yml                   # Comprehensive deployment example
+├── .github/workflows/build-and-publish.yml  # Multi-arch CI/CD pipeline
+└── README.md                           # This file
+```
 
-### Automatic Builds
+## Build Process
 
-- **Stable builds**: Triggered when TokTok/c-toxcore releases new tags
-- **Nightly builds**: Daily builds from upstream master branch
-- **Multi-arch**: Builds for AMD64 and ARM64 automatically
+The container builds from the `upstream` branch which is synchronized with [TokTok/c-toxcore](https://github.com/TokTok/c-toxcore) master branch.
 
-## Monitoring
-
-### Health Checks
-
-The container includes health checks that verify the bootstrap daemon is listening on the configured port.
-
-### Logs
-
-View container logs:
 ```bash
-docker logs -f tox-bootstrap
+# Branches
+main     - Docker files, CI/CD, documentation  
+upstream - c-toxcore source code (synced with TokTok/c-toxcore)
 ```
-
-### Status
-
-Check if your node is working:
-```bash
-# Check if port is listening
-docker exec tox-bootstrap netstat -tuln | grep 33445
-
-# View active connections  
-docker exec tox-bootstrap ss -tuln | grep 33445
-```
-
-## Security
-
-- Runs as non-root user (UID/GID 1000)
-- Uses minimal Alpine base image
-- No unnecessary packages or services
-- Persistent storage only for node keys and DHT data
-
-## Troubleshooting
-
-### Container won't start
-- Check port 33445 isn't already in use: `netstat -tuln | grep 33445`
-- Verify user 1000:1000 has access to the data volume
-- Check container logs: `docker logs tox-bootstrap`
-
-### Can't connect to bootstrap node
-- Verify your firewall allows UDP/TCP traffic on port 33445
-- Ensure your router forwards port 33445 to your Pi4 (if behind NAT)
-- Check the node is generating DHT traffic in logs
-
-### Performance issues
-- Monitor resource usage: `docker stats tox-bootstrap`
-- Consider increasing memory limits for very busy nodes
-- Check network connectivity to other bootstrap nodes
 
 ## Contributing
 
-1. Fork this repository
-2. Create a feature branch
-3. Submit a pull request
+This is a personal project for learning Docker containerization and Tox network deployment. 
 
-The container will automatically rebuild when changes are pushed to main.
+**Current Focus:**
+1. Fix DHT key generation issues
+2. Implement reliable bootstrap info JSON generation  
+3. Add comprehensive error handling and logging
+4. Test on actual Pi4 hardware
+5. Create usage documentation
 
-## License
+## Roadmap
 
-This project follows the same license as TokTok/c-toxcore (GPL-3.0). See the upstream repository for full license details.
+- [ ] **Phase 1**: Basic functionality (stable container startup)
+- [ ] **Phase 2**: Client auto-configuration (working bootstrap_info.json)  
+- [ ] **Phase 3**: Advanced features (monitoring, health checks)
+- [ ] **Phase 4**: Documentation and examples
+- [ ] **Phase 5**: Production readiness
 
-## Acknowledgments
+## Contact
 
-- [TokTok/c-toxcore](https://github.com/TokTok/c-toxcore) - The core Tox protocol implementation
-- [Tox Project](https://tox.chat) - Decentralized communication protocol
+This is an experimental project. Use at your own risk.
+
+**Expected Timeline:** Ready for testing by end of September 2025.
+
+---
+
+⚠️ **WARNING**: This container is not stable. It may fail to start, lose data, or behave unpredictably. Wait for a stable release before using in any important scenarios.
