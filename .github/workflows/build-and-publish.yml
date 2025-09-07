@@ -1,241 +1,239 @@
-name: Build and Publish Tox DHT Bootstrap Container
+# Build and publish multi-architecture Tox bootstrap daemon container
+name: Build and Publish Tox Bootstrap Container
+
+permissions:
+  contents: read
+  packages: write
 
 on:
   # push:
-  #   branches:
-  #     - main
+  #   branches: [main]
   #   paths:
   #     - 'Dockerfile'
   #     - 'entrypoint.sh'
   #     - '.github/workflows/build-and-publish.yml'
   # pull_request:
-  #   branches:
-  #     - main
+  #   branches: [main]
   #   paths:
   #     - 'Dockerfile'
   #     - 'entrypoint.sh'
   #     - '.github/workflows/build-and-publish.yml'
   workflow_dispatch:
-    inputs:
-      force_build:
-        description: 'Force build even without changes'
-        required: false
-        default: false
-        type: boolean
+  schedule:
+    # Rebuild weekly to get latest upstream changes and security updates
+    - cron: '0 2 * * 0'  # Every Sunday at 2 AM UTC
 
 env:
   REGISTRY: ghcr.io
 
 jobs:
-  build-and-publish:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      # Remove id-token and security-events permissions that were causing issues
-      # id-token: write
-      # security-events: write
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+
+    outputs:
+      image_name: ${{ steps.lowercase.outputs.image_name }}
+      upstream_commit: ${{ steps.upstream.outputs.commit }}
 
     steps:
-      - name: Checkout main branch (for Docker files)
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: main
-          path: main
+          fetch-depth: 0  # Fetch all branches
 
-      - name: Checkout upstream branch (for source code)
-        uses: actions/checkout@v4
-        with:
-          ref: upstream
-          path: upstream
-          # Ensure git history is available for proper checkout
-          fetch-depth: 0
+      - name: Check upstream branch
+        id: upstream
+        run: |
+          if git rev-parse --verify upstream >/dev/null 2>&1; then
+            echo "commit=$(git rev-parse upstream)" >> $GITHUB_OUTPUT
+            echo "Upstream branch found: $(git rev-parse upstream)"
+          else
+            echo "ERROR: 'upstream' branch not found!"
+            echo "Please create an 'upstream' branch synced with TokTok/c-toxcore"
+            exit 1
+          fi
 
-      - name: Set up QEMU for multi-arch builds
+      - name: Set up QEMU for emulation
         uses: docker/setup-qemu-action@v3
-        with:
-          platforms: linux/amd64,linux/arm64
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
-          driver-opts: |
-            network=host
+          install: true
 
-      - name: Log in to Container Registry
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate lowercase image name
-        id: image
+      - name: Compute lowercase image name
+        id: lowercase
         run: |
-          IMAGE_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          echo "name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
-          echo "full_name=${{ env.REGISTRY }}/${IMAGE_NAME}" >> $GITHUB_OUTPUT
+          IMAGE=$(echo $GITHUB_REPOSITORY | tr '[:upper:]' '[:lower:]')
+          echo "image_name=$IMAGE" >> $GITHUB_OUTPUT
+          echo "Image name: $IMAGE"
 
-      - name: Extract metadata
+      - name: Generate metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ steps.image.outputs.full_name }}
+          images: ${{ env.REGISTRY }}/${{ steps.lowercase.outputs.image_name }}
           tags: |
-            # Set latest tag for main branch
-            type=raw,value=latest,enable={{is_default_branch}}
-            # Tag with branch name
             type=ref,event=branch
-            # Tag with PR number
             type=ref,event=pr
-            # Tag with git short commit SHA
-            type=sha,prefix=sha-,format=short
-            # Tag with date
-            type=schedule,pattern={{date 'YYYYMMDD'}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.upstream.outputs.commit }},enable={{is_default_branch}}
+          flavor: |
+            suffix=-${{ matrix.arch }}
 
-      - name: Prepare build context
-        run: |
-          # Create build context with source code from upstream branch
-          mkdir -p build-context
-          
-          # Copy source code from upstream branch
-          cp -r upstream/* build-context/ 2>/dev/null || true
-          cp -r upstream/.git* build-context/ 2>/dev/null || true
-          
-          # Copy Docker files from main branch
-          cp main/Dockerfile build-context/
-          cp main/entrypoint.sh build-context/
-          
-          # Ensure entrypoint.sh is executable
-          chmod +x build-context/entrypoint.sh
-          
-          # List contents for debugging
-          echo "Build context contents:"
-          ls -la build-context/
-          
-          # Check if submodules exist and initialize them
-          if [ -f "build-context/.gitmodules" ]; then
-            echo "Git submodules found, will be initialized during build"
-            cd build-context && git submodule update --init --recursive || echo "Submodule initialization will happen in Docker build"
-            cd ..
-          fi
-
-      - name: Build and push container image
+      - name: Build and push container (${{ matrix.arch }})
         uses: docker/build-push-action@v5
         with:
-          context: ./build-context
-          file: ./build-context/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name != 'pull_request' }}
+          context: .
+          platforms: linux/${{ matrix.arch }}
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            REPO_URL=${{ github.server_url }}/${{ github.repository }}.git
+            BRANCH=upstream
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            BUILDKIT_INLINE_CACHE=1
-            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
-            VCS_REF=${{ github.sha }}
 
-      - name: Generate container info
-        if: github.event_name != 'pull_request'
-        run: |
-          echo "## 🚀 Container Published Successfully!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📦 Image Details" >> $GITHUB_STEP_SUMMARY
-          echo "- **Registry**: ${{ env.REGISTRY }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Image**: \`${{ steps.image.outputs.name }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Architectures**: linux/amd64, linux/arm64" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 🐳 Pull Command" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ${{ steps.image.outputs.full_name }}:latest" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 🏃 Quick Start" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "docker run -d \\" >> $GITHUB_STEP_SUMMARY
-          echo "  --name tox-bootstrap \\" >> $GITHUB_STEP_SUMMARY
-          echo "  -p 33445:33445/tcp \\" >> $GITHUB_STEP_SUMMARY
-          echo "  -p 33445:33445/udp \\" >> $GITHUB_STEP_SUMMARY
-          echo "  -v tox-data:/data \\" >> $GITHUB_STEP_SUMMARY
-          echo "  -e TOX_ENABLE_INTERNET=true \\" >> $GITHUB_STEP_SUMMARY
-          echo "  --user \$(id -u):\$(id -g) \\" >> $GITHUB_STEP_SUMMARY
-          echo "  ${{ steps.image.outputs.full_name }}:latest" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### ⚙️ Environment Variables" >> $GITHUB_STEP_SUMMARY
-          echo "- \`TOX_PORT=33445\` - Port for DHT bootstrap (TCP/UDP)" >> $GITHUB_STEP_SUMMARY
-          echo "- \`TOX_ENABLE_INTERNET=true\` - Connect to external Tox network" >> $GITHUB_STEP_SUMMARY
-          echo "- \`TOX_KEYS_FILE=/data/keys\` - Persistent bootstrap keys" >> $GITHUB_STEP_SUMMARY
-          echo "- \`TOX_LOG_LEVEL=INFO\` - Logging level" >> $GITHUB_STEP_SUMMARY
-          echo "- \`TOX_MOTD=\"Tox DHT Bootstrap Node\"\` - Message of the Day" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📝 Notes" >> $GITHUB_STEP_SUMMARY
-          echo "- Local network functionality is **always enabled** (works offline)" >> $GITHUB_STEP_SUMMARY
-          echo "- Internet connectivity can be controlled via \`TOX_ENABLE_INTERNET\`" >> $GITHUB_STEP_SUMMARY
-          echo "- For offline-only mode, use Docker networks with \`internal: true\`" >> $GITHUB_STEP_SUMMARY
-          echo "- Optimized for Raspberry Pi 4 (arm64) and x86_64 systems" >> $GITHUB_STEP_SUMMARY
-          echo "- Runs as non-root user by default" >> $GITHUB_STEP_SUMMARY
-          echo "- Supports custom UID/GID via \`--user\` flag or PUID/PGID env vars" >> $GITHUB_STEP_SUMMARY
+  manifest:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
 
-      - name: Test container (quick smoke test)
-        if: github.event_name != 'pull_request'
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          install: true
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push multi-architecture manifest
         run: |
-          echo "Testing container startup..."
+          IMAGE_NAME="${{ needs.build.outputs.image_name }}"
+          UPSTREAM_COMMIT="${{ needs.build.outputs.upstream_commit }}"
           
-          # Pull the built image
-          docker pull ${{ steps.image.outputs.full_name }}:latest
+          # Create manifest for 'latest' tag (if main branch)
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "Creating 'latest' manifest..."
+            docker buildx imagetools create \
+              --tag ${{ env.REGISTRY }}/${IMAGE_NAME}:latest \
+              ${{ env.REGISTRY }}/${IMAGE_NAME}:latest-amd64 \
+              ${{ env.REGISTRY }}/${IMAGE_NAME}:latest-arm64
           
-          # Test container starts without errors
-          container_id=$(docker run -d \
-            -e TOX_ENABLE_INTERNET=false \
-            -e TOX_LOG_LEVEL=INFO \
-            ${{ steps.image.outputs.full_name }}:latest)
+            echo "Creating upstream commit manifest..."
+            docker buildx imagetools create \
+              --tag ${{ env.REGISTRY }}/${IMAGE_NAME}:${UPSTREAM_COMMIT} \
+              ${{ env.REGISTRY }}/${IMAGE_NAME}:${UPSTREAM_COMMIT}-amd64 \
+              ${{ env.REGISTRY }}/${IMAGE_NAME}:${UPSTREAM_COMMIT}-arm64
+          fi
+          
+          # Create manifest for branch/PR tags
+          BRANCH_NAME="${{ github.ref_name }}"
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" != "refs/heads/main" ]]; then
+            echo "Creating branch manifest for: $BRANCH_NAME"
+            docker buildx imagetools create \
+              --tag ${{ env.REGISTRY }}/${IMAGE_NAME}:${BRANCH_NAME} \
+              ${{ env.REGISTRY }}/${IMAGE_NAME}:${BRANCH_NAME}-amd64 \
+              ${{ env.REGISTRY }}/${IMAGE_NAME}:${BRANCH_NAME}-arm64
+          fi
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Test container functionality
+        run: |
+          IMAGE_NAME="${{ needs.build.outputs.image_name }}"
+          
+          echo "Testing container startup and basic functionality..."
+          
+          # Test container startup
+          docker run --rm -d \
+            --name tox-test \
+            -e TOX_ENABLE_PUBLIC_BOOTSTRAP=false \
+            -e TOX_LOG_LEVEL=DEBUG \
+            ${{ env.REGISTRY }}/${IMAGE_NAME}:${{ github.sha }}-amd64
           
           # Wait a bit for startup
-          sleep 15
+          sleep 10
           
-          # Check if container is still running
-          if docker ps | grep -q "$container_id"; then
-            echo "✅ Container started successfully and is running"
-            docker logs "$container_id"
+          # Check if container is running
+          if docker ps | grep tox-test; then
+            echo "✅ Container started successfully"
           else
-            echo "❌ Container failed to start or stopped unexpectedly"
-            docker logs "$container_id"
+            echo "❌ Container failed to start"
+            exit 1
+          fi
+          
+          # Check logs for errors
+          if docker logs tox-test 2>&1 | grep -i error; then
+            echo "❌ Found errors in logs"
+            docker logs tox-test
+            exit 1
+          fi
+          
+          # Check if bootstrap info file was generated
+          if docker exec tox-test test -f /data/bootstrap_info.json; then
+            echo "✅ Bootstrap info file generated"
+            docker exec tox-test cat /data/bootstrap_info.json
+          else
+            echo "❌ Bootstrap info file missing"
+            exit 1
+          fi
+          
+          # Check if daemon is responsive
+          if docker exec tox-test pgrep tox-bootstrapd; then
+            echo "✅ tox-bootstrapd daemon is running"
+          else
+            echo "❌ tox-bootstrapd daemon not found"
             exit 1
           fi
           
           # Cleanup
-          docker stop "$container_id" >/dev/null 2>&1 || true
-          docker rm "$container_id" >/dev/null 2>&1 || true
+          docker stop tox-test
           
-          echo "Container smoke test completed successfully!"
+          echo "🎉 All tests passed!"
 
-      # Remove Trivy security scan temporarily to avoid permission issues
-      # Can be re-enabled once proper permissions are configured
-      # - name: Security scan with Trivy
-      #   if: github.event_name != 'pull_request'
-      #   uses: aquasecurity/trivy-action@master
-      #   with:
-      #     image-ref: ${{ steps.image.outputs.full_name }}:latest
-      #     format: 'table'
-      #     severity: 'CRITICAL,HIGH'
-      #     exit-code: '0'
-
-  # Cleanup old container images (optional)
+  # Clean up old container images (keep last 10 versions)
   cleanup:
+    needs: [manifest]
     runs-on: ubuntu-latest
-    needs: build-and-publish
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    permissions:
-      contents: read
-      packages: write
-    
+    if: github.ref == 'refs/heads/main'
+    continue-on-error: true
+
     steps:
-      - name: Delete old container images
-        uses: actions/delete-package-versions@v4
+      - name: Clean up old container images
+        uses: actions/delete-package-versions@v5
         with:
           package-name: ${{ github.repository }}
           package-type: 'container'
           min-versions-to-keep: 10
-          delete-only-untagged-versions: true
+          delete-only-untagged-versions: 'false'
