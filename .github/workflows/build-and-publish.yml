@@ -41,17 +41,40 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch all branches
+          fetch-depth: 0  # Fetch all branches and tags
+          ref: ${{ github.ref }}
+
+      - name: Fetch all remote branches
+        run: |
+          git fetch origin --all
+          echo "Available branches:"
+          git branch -r
+          echo "Available local branches:"
+          git branch -a
 
       - name: Check upstream branch
         id: upstream
         run: |
-          if git rev-parse --verify upstream >/dev/null 2>&1; then
-            echo "commit=$(git rev-parse upstream)" >> $GITHUB_OUTPUT
-            echo "Upstream branch found: $(git rev-parse upstream)"
+          # Try to find upstream branch in different ways
+          if git rev-parse --verify origin/upstream >/dev/null 2>&1; then
+            UPSTREAM_COMMIT=$(git rev-parse origin/upstream)
+            echo "commit=$UPSTREAM_COMMIT" >> $GITHUB_OUTPUT
+            echo "✅ Upstream branch found: $UPSTREAM_COMMIT"
+          elif git rev-parse --verify upstream >/dev/null 2>&1; then
+            UPSTREAM_COMMIT=$(git rev-parse upstream)
+            echo "commit=$UPSTREAM_COMMIT" >> $GITHUB_OUTPUT
+            echo "✅ Upstream branch found: $UPSTREAM_COMMIT"
+          elif git ls-remote --exit-code origin upstream >/dev/null 2>&1; then
+            # Branch exists remotely, checkout locally
+            git checkout -b upstream origin/upstream
+            UPSTREAM_COMMIT=$(git rev-parse upstream)
+            echo "commit=$UPSTREAM_COMMIT" >> $GITHUB_OUTPUT
+            echo "✅ Upstream branch checked out: $UPSTREAM_COMMIT"
           else
-            echo "ERROR: 'upstream' branch not found!"
-            echo "Please create an 'upstream' branch synced with TokTok/c-toxcore"
+            echo "❌ ERROR: 'upstream' branch not found!"
+            echo "Available branches:"
+            git branch -r
+            echo "Please ensure 'upstream' branch exists and is pushed to origin"
             exit 1
           fi
 
