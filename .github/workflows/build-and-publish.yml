@@ -254,6 +254,7 @@ jobs:
 
     steps:
       - name: Clean up old container images
+        continue-on-error: true
         uses: actions/delete-package-versions@v5
         with:
           package-name: ${{ github.repository }}
